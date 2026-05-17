@@ -1,866 +1,330 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aristarco — Control de Acceso Biométrico</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600&family=Barlow+Condensed:wght@500;700&display=swap" rel="stylesheet">
-
-  <style>
-    :root {
-      --bg:        #0b0e11;
-      --bg2:       #111519;
-      --bg3:       #181d23;
-      --border:    #1e2730;
-      --border2:   #263040;
-      --text:      #c8d0da;
-      --muted:     #4a5568;
-      --accent:    #00c896;
-      --accent2:   #00a87c;
-      --danger:    #ff4d6a;
-      --danger2:   #cc3a54;
-      --warn:      #f0a500;
-      --mono:      'Share Tech Mono', monospace;
-      --sans:      'Barlow', sans-serif;
-      --cond:      'Barlow Condensed', sans-serif;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--sans);
-      font-size: 14px;
-      line-height: 1.6;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* ── SCANLINE overlay ───────────────────────────── */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0,0,0,0.08) 2px,
-        rgba(0,0,0,0.08) 4px
-      );
-      pointer-events: none;
-      z-index: 1000;
-    }
-
-    /* ── HEADER ─────────────────────────────────────── */
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 2rem;
-      height: 64px;
-      border-bottom: 1px solid var(--border);
-      background: var(--bg2);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .logo-icon {
-      width: 36px;
-      height: 36px;
-      background: var(--accent);
-      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .logo-icon::after {
-      content: '';
-      width: 14px;
-      height: 14px;
-      background: var(--bg);
-      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    }
-
-    .logo-text {
-      font-family: var(--cond);
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #fff;
-    }
-
-    .logo-text span { color: var(--accent); }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-    }
-
-    .live-badge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--accent);
-      letter-spacing: 0.08em;
-    }
-
-    .live-dot {
-      width: 7px;
-      height: 7px;
-      background: var(--accent);
-      border-radius: 50%;
-      animation: pulse 1.8s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50%       { opacity: 0.4; transform: scale(0.7); }
-    }
-
-    .connection-status {
-      font-family: var(--mono);
-      font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 3px;
-      border: 1px solid;
-      letter-spacing: 0.06em;
-    }
-    .connection-status.online  { color: var(--accent); border-color: var(--accent2); background: rgba(0,200,150,0.07); }
-    .connection-status.offline { color: var(--danger); border-color: var(--danger2); background: rgba(255,77,106,0.07); }
-    .connection-status.loading { color: var(--warn);   border-color: var(--warn);    background: rgba(240,165,0,0.07); }
-
-    /* ── MAIN LAYOUT ────────────────────────────────── */
-    main {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 2rem;
-      display: grid;
-      gap: 1.5rem;
-    }
-
-    /* ── STAT CARDS ─────────────────────────────────── */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 1rem;
-    }
-
-    .stat-card {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 1.2rem 1.4rem;
-      position: relative;
-      overflow: hidden;
-      transition: border-color 0.2s;
-    }
-
-    .stat-card:hover { border-color: var(--border2); }
-
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0;
-      width: 3px;
-      height: 100%;
-    }
-
-    .stat-card.total::before   { background: #4a90d9; }
-    .stat-card.allowed::before { background: var(--accent); }
-    .stat-card.denied::before  { background: var(--danger); }
-    .stat-card.users::before   { background: var(--warn); }
-
-    .stat-label {
-      font-family: var(--mono);
-      font-size: 10px;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .stat-value {
-      font-family: var(--cond);
-      font-size: 36px;
-      font-weight: 700;
-      line-height: 1;
-      color: #fff;
-    }
-
-    .stat-card.allowed .stat-value { color: var(--accent); }
-    .stat-card.denied  .stat-value { color: var(--danger); }
-    .stat-card.users   .stat-value { color: var(--warn); }
-
-    /* ── TOOLBAR ────────────────────────────────────── */
-    .toolbar {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-
-    .section-title {
-      font-family: var(--cond);
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--muted);
-      flex: 1;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .section-title::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-      max-width: 300px;
-    }
-
-    .filter-group {
-      display: flex;
-      gap: 6px;
-    }
-
-    .btn-filter {
-      font-family: var(--mono);
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      padding: 5px 12px;
-      background: transparent;
-      border: 1px solid var(--border2);
-      border-radius: 3px;
-      color: var(--muted);
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    .btn-filter:hover { color: var(--text); border-color: var(--text); }
-    .btn-filter.active-all      { color: #fff;           border-color: #4a90d9; background: rgba(74,144,217,0.1); }
-    .btn-filter.active-allowed  { color: var(--accent);  border-color: var(--accent2); background: rgba(0,200,150,0.08); }
-    .btn-filter.active-denied   { color: var(--danger);  border-color: var(--danger2); background: rgba(255,77,106,0.08); }
-
-    .search-box {
-      font-family: var(--mono);
-      font-size: 12px;
-      background: var(--bg3);
-      border: 1px solid var(--border2);
-      border-radius: 3px;
-      color: var(--text);
-      padding: 5px 12px;
-      width: 200px;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    .search-box::placeholder { color: var(--muted); }
-    .search-box:focus { border-color: var(--accent2); }
-
-    .btn-export {
-      font-family: var(--mono);
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      padding: 5px 14px;
-      background: transparent;
-      border: 1px solid var(--border2);
-      border-radius: 3px;
-      color: var(--muted);
-      cursor: pointer;
-      transition: all 0.15s;
-      margin-left: auto;
-    }
-    .btn-export:hover { color: var(--warn); border-color: var(--warn); }
-
-    /* ── TABLE ──────────────────────────────────────── */
-    .table-wrap {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    thead th {
-      font-family: var(--mono);
-      font-size: 10px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--muted);
-      padding: 12px 16px;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-      background: var(--bg3);
-      white-space: nowrap;
-    }
-
-    tbody tr {
-      border-bottom: 1px solid var(--border);
-      transition: background 0.12s;
-      animation: rowIn 0.35s ease both;
-    }
-
-    @keyframes rowIn {
-      from { opacity: 0; transform: translateX(-8px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-
-    tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: var(--bg3); }
-
-    tbody td {
-      padding: 11px 16px;
-      vertical-align: middle;
-      font-size: 13px;
-    }
-
-    .td-timestamp {
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    .td-id {
-      font-family: var(--mono);
-      font-size: 13px;
-      color: #4a90d9;
-      font-weight: bold;
-      text-align: center;
-    }
-
-    .td-nombre {
-      font-weight: 600;
-      color: #eef0f3;
-    }
-
-    .td-ci, .td-tel {
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--text);
-    }
-
-    .td-confianza {
-      font-family: var(--mono);
-      font-size: 12px;
-      text-align: center;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-family: var(--mono);
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      padding: 3px 10px;
-      border-radius: 2px;
-      font-weight: bold;
-      white-space: nowrap;
-    }
-
-    .badge-allowed {
-      color: var(--accent);
-      background: rgba(0,200,150,0.1);
-      border: 1px solid rgba(0,200,150,0.25);
-    }
-
-    .badge-denied {
-      color: var(--danger);
-      background: rgba(255,77,106,0.1);
-      border: 1px solid rgba(255,77,106,0.25);
-    }
-
-    .badge::before {
-      content: '';
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-    }
-
-    .badge-allowed::before { background: var(--accent); }
-    .badge-denied::before  { background: var(--danger); }
-
-    .conf-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .conf-track {
-      width: 60px;
-      height: 4px;
-      background: var(--border);
-      border-radius: 2px;
-      overflow: hidden;
-    }
-
-    .conf-fill {
-      height: 100%;
-      border-radius: 2px;
-      transition: width 0.4s ease;
-    }
-
-    /* ── EMPTY / LOADING STATES ─────────────────────── */
-    .state-box {
-      text-align: center;
-      padding: 5rem 2rem;
-      color: var(--muted);
-    }
-
-    .state-box .state-icon {
-      font-size: 48px;
-      margin-bottom: 1rem;
-      opacity: 0.3;
-    }
-
-    .state-box p {
-      font-family: var(--mono);
-      font-size: 13px;
-      letter-spacing: 0.08em;
-    }
-
-    .spinner {
-      width: 32px;
-      height: 32px;
-      border: 2px solid var(--border2);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      margin: 0 auto 1rem;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── LATEST EVENT BANNER ────────────────────────── */
-    .latest-banner {
-      display: none;
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--accent);
-      border-radius: 4px;
-      padding: 1rem 1.4rem;
-      font-family: var(--mono);
-      font-size: 12px;
-      animation: slideDown 0.4s ease;
-    }
-
-    @keyframes slideDown {
-      from { opacity: 0; transform: translateY(-10px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .latest-banner.denied { border-left-color: var(--danger); }
-    .latest-banner.show   { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-
-    .latest-label {
-      color: var(--muted);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      font-size: 10px;
-      flex-shrink: 0;
-    }
-
-    .latest-content { flex: 1; color: var(--text); }
-    .latest-time    { color: var(--muted); font-size: 11px; flex-shrink: 0; }
-
-    /* ── FOOTER ─────────────────────────────────────── */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 1.2rem 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-family: var(--mono);
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    footer a { color: var(--accent2); text-decoration: none; }
-
-    /* ── RESPONSIVE ─────────────────────────────────── */
-    @media (max-width: 768px) {
-      main { padding: 1rem; }
-      header { padding: 0 1rem; }
-      .logo-text { font-size: 16px; }
-      .td-tel, .td-correo { display: none; }
-      .search-box { width: 140px; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber-Lab | Inmersión Electrónica</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0a0e17;
+            --bg-panel: #111827;
+            --bg-card: #1f2937;
+            --neon-cyan: #06b6d4;
+            --neon-purple: #a855f7;
+            --neon-green: #10b981;
+            --neon-orange: #f59e0b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        
+        body { background-color: var(--bg-dark); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+        /* Scrollbar Cyberpunk */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-panel); }
+        ::-webkit-scrollbar-thumb { background: var(--neon-cyan); border-radius: 4px; }
+
+        /* Sidebar */
+        .sidebar { width: 300px; background: var(--bg-panel); border-right: 1px solid #334155; display: flex; flex-direction: column; padding: 20px 0; overflow-y: auto; box-shadow: 5px 0 15px rgba(0,0,0,0.5); z-index: 10; }
+        .logo { padding: 0 20px 30px; border-bottom: 1px solid #334155; margin-bottom: 20px; }
+        .logo h1 { font-size: 1.8rem; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; letter-spacing: 2px; }
+        .logo p { color: var(--text-muted); font-size: 0.8rem; margin-top: 5px; }
+        
+        .nav-item { display: flex; align-items: center; padding: 15px 25px; color: var(--text-muted); cursor: pointer; transition: all 0.3s; border-left: 4px solid transparent; font-size: 0.95rem; }
+        .nav-item:hover { background: rgba(6, 182, 212, 0.1); color: var(--text-main); }
+        .nav-item.active { background: rgba(6, 182, 212, 0.1); color: var(--neon-cyan); border-left-color: var(--neon-cyan); }
+        .nav-item i { margin-right: 15px; font-size: 1.1rem; width: 20px; text-align: center; }
+        
+        .nav-section { padding: 10px 25px; color: var(--neon-purple); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; margin-top: 10px; }
+
+        /* Main Content */
+        .main { flex: 1; overflow-y: auto; padding: 40px 50px; background: radial-gradient(circle at top right, #1e1b4b, var(--bg-dark)); }
+        
+        .header { margin-bottom: 30px; animation: fadeIn 0.5s ease; }
+        .header h1 { font-size: 2.8rem; color: var(--neon-cyan); text-shadow: 0 0 20px rgba(6, 182, 212, 0.4); margin-bottom: 10px; }
+        .header p { color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; max-width: 800px; }
+
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; animation: slideUp 0.6s ease; }
+
+        .card { background: var(--bg-card); border-radius: 15px; padding: 25px; border: 1px solid #334155; position: relative; overflow: hidden; transition: transform 0.3s, box-shadow 0.3s; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-color: var(--neon-purple); }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); }
+        
+        .card-title { font-size: 1.2rem; color: var(--neon-cyan); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        .card-text { color: var(--text-muted); line-height: 1.7; font-size: 0.95rem; text-align: justify; }
+        .card-text strong { color: var(--neon-green); }
+
+        /* Imagen */
+        .image-card { grid-column: span 2; background: #050811; border: 1px dashed var(--neon-purple); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; position: relative; }
+        .image-card img { max-width: 90%; max-height: 250px; object-fit: contain; filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.6)); transition: transform 0.5s; }
+        .image-card img:hover { transform: scale(1.05); }
+        .placeholder-img { color: var(--neon-purple); text-align: center; }
+        .placeholder-img i { font-size: 3rem; margin-bottom: 10px; display: block; }
+
+        /* Desafío */
+        .challenge-card { grid-column: span 2; background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid var(--neon-orange); }
+        .challenge-card::before { background: var(--neon-orange); }
+        .challenge-card .card-title { color: var(--neon-orange); }
+        .btn-solve { background: transparent; border: 1px solid var(--neon-orange); color: var(--neon-orange); padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-top: 15px; font-weight: bold; transition: all 0.3s; }
+        .btn-solve:hover { background: var(--neon-orange); color: var(--bg-dark); }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 100; display: none; align-items: center; justify-content: center; }
+        .modal-content { background: var(--bg-panel); border: 1px solid var(--neon-green); border-radius: 15px; padding: 30px; max-width: 500px; width: 90%; text-align: center; animation: popIn 0.3s ease; }
+        .modal-content h3 { color: var(--neon-green); margin-bottom: 15px; font-size: 1.5rem; }
+        .modal-content p { color: var(--text-main); margin-bottom: 25px; line-height: 1.6; }
+        .btn-close { background: var(--neon-green); color: var(--bg-dark); border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1rem; }
+
+        /* Animaciones */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        @media (max-width: 768px) {
+            .sidebar { width: 70px; padding: 10px 0; }
+            .logo h1, .logo p, .nav-item span, .nav-section { display: none; }
+            .nav-item { justify-content: center; padding: 15px; border-left: none; border-bottom: 4px solid transparent; }
+            .nav-item.active { border-bottom-color: var(--neon-cyan); border-left: none; }
+            .nav-item i { margin-right: 0; font-size: 1.3rem; }
+            .main { padding: 20px; }
+            .image-card, .challenge-card { grid-column: span 1; }
+            .header h1 { font-size: 2rem; }
+        }
+    </style>
 </head>
-
 <body>
 
-  <!-- ══ HEADER ══════════════════════════════════════════ -->
-  <header>
-    <div class="logo">
-      <div class="logo-icon"></div>
-      <span class="logo-text">Aristarco <span>//</span> Acceso</span>
-    </div>
-    <div class="header-right">
-      <div class="live-badge">
-        <div class="live-dot"></div>
-        TIEMPO REAL
-      </div>
-      <div class="connection-status loading" id="connStatus">CONECTANDO…</div>
-    </div>
-  </header>
+    <!-- Barra Lateral de Navegación -->
+    <aside class="sidebar">
+        <div class="logo">
+            <h1><i class="fas fa-bolt"></i> Cyber-Lab</h1>
+            <p>Inmersión Electrónica</p>
+        </div>
+        
+        <div class="nav-section">Componentes</div>
+        <div class="nav-item active" onclick="loadTopic(0)"><i class="fas fa-atom"></i><span>Electrónica Básica</span></div>
+        <div class="nav-item" onclick="loadTopic(1)"><i class="fas fa-sliders-h"></i><span>Resistores</span></div>
+        <div class="nav-item" onclick="loadTopic(2)"><i class="fas fa-database"></i><span>Condensadores</span></div>
+        <div class="nav-item" onclick="loadTopic(3)"><i class="fas fa-exchange-alt"></i><span>Rectificadores</span></div>
+        <div class="nav-item" onclick="loadTopic(4)"><i class="fas fa-microchip"></i><span>Transistores</span></div>
+        <div class="nav-item" onclick="loadTopic(5)"><i class="fas fa-plug"></i><span>Tiristores / Triacs</span></div>
+        <div class="nav-item" onclick="loadTopic(6)"><i class="fas fa-brain"></i><span>Circuitos Integrados</span></div>
 
-  <!-- ══ MAIN ════════════════════════════════════════════ -->
-  <main>
+        <div class="nav-section">Práctica</div>
+        <div class="nav-item" onclick="loadTopic(7)"><i class="fas fa-project-diagram"></i><span>Proyectos</span></div>
+        <div class="nav-item" onclick="loadTopic(8)"><i class="fas fa-shield-alt"></i><span>Seguridad</span></div>
+        <div class="nav-item" onclick="loadTopic(9)"><i class="fas fa-laptop-code"></i><span>Simulación</span></div>
+    </aside>
 
-    <!-- Estadísticas -->
-    <div class="stats-grid">
-      <div class="stat-card total">
-        <div class="stat-label">total registros</div>
-        <div class="stat-value" id="statTotal">—</div>
-      </div>
-      <div class="stat-card allowed">
-        <div class="stat-label">accesos permitidos</div>
-        <div class="stat-value" id="statAllowed">—</div>
-      </div>
-      <div class="stat-card denied">
-        <div class="stat-label">accesos denegados</div>
-        <div class="stat-value" id="statDenied">—</div>
-      </div>
-      <div class="stat-card users">
-        <div class="stat-label">usuarios únicos</div>
-        <div class="stat-value" id="statUsers">—</div>
-      </div>
+    <!-- Contenido Principal -->
+    <main class="main" id="main-content">
+        <!-- El contenido se inyecta aquí por JavaScript -->
+    </main>
+
+    <!-- Modal para Desafíos -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content">
+            <h3><i class="fas fa-lightbulb"></i> ¡Respuesta!</h3>
+            <p id="modal-answer"></p>
+            <button class="btn-close" onclick="closeModal()">Entendido</button>
+        </div>
     </div>
 
-    <!-- Último evento -->
-    <div class="latest-banner" id="latestBanner">
-      <span class="latest-label">último evento</span>
-      <span class="latest-content" id="latestContent">—</span>
-      <span class="latest-time" id="latestTime">—</span>
-    </div>
+    <script>
+        // ==========================================
+        // 🧠 BASE DE CONOCIMIENTO (DATA DUMP)
+        // ==========================================
+        const temas = [
+            {
+                titulo: "1. Electrónica Básica: El Río Invisible",
+                intro: "Para que cualquier aparato funcione, necesitamos tres personajes principales. Piensa en un circuito como un sistema de tuberías.",
+                definicion: "El <strong>Voltaje (V)</strong> es la presión que empuja el agua. La <strong>Corriente (I)</strong> es la cantidad de agua que fluye. La <strong>Resistencia (R)</strong> es un obstáculo en la tubería.",
+                funcionamiento: "La Ley de Ohm (<strong>V = I x R</strong>) rige este universo. Si subes el Voltaje (presión) y la Resistencia no cambia, la Corriente (flujo) sube. Si subes la Resistencia (obstáculo), la Corriente baja.",
+                ejemplo: "Tu cargador de celular: el enchufe tiene alto voltaje (120V/220V), pero el cargador usa resistencias y transformadores para bajarlo a 5V y limitar la corriente para que tu batería no explote.",
+                imagen_url: "", // Dejar vacío para mostrar placeholder
+                desafio: "Si tu cargador te da 5 Voltios y tu teléfono tiene una resistencia de 10 Ohmios, ¿Cuánta corriente (Amperios) fluye?",
+                respuesta: "Usamos la Ley de Ohm: I = V / R. Entonces: I = 5V / 10Ω = 0.5 Amperios. ¡Fluyen 500 miliamperios por tu cable!"
+            },
+            {
+                titulo: "2. Resistores: Los Frenos del Circuito",
+                intro: "Los resistores son los héroes silenciosos. Sin ellos, la corriente iría sin control y quemaría todo.",
+                definicion: "Son componentes diseñados para frenar la corriente. Hay <strong>Fijos</strong> (siempre frenan igual), <strong>Variables</strong> (como el volumen de tu radio) y <strong>No Lineales</strong> (sensores que reaccionan al entorno).",
+                funcionamiento: "<strong>LDR:</strong> Le encanta la luz. En la oscuridad es un muro (alta resistencia), con luz abre la puerta (baja resistencia).<br><strong>NTC/PTC:</strong> Reaccionan al calor. NTC baja su resistencia si se calienta. PTC la sube drásticamente para proteger circuitos.",
+                ejemplo: "Las lámparas solares de tu jardín usan una LDR para saber cuándo oscurece y encenderse. Las baterías de laptops usan PTC para cortar la corriente si se sobrecalientan.",
+                imagen_url: "",
+                desafio: "¿Qué resistor usarías para hacer un termómetro digital que necesite mayor conductividad (menor resistencia) al aumentar el calor?",
+                respuesta: "Una NTC (Coeficiente Negativo de Temperatura). A más calor, su resistencia baja, permitiendo pasar más corriente que el microchip traduce en grados centígrados."
+            },
+            {
+                titulo: "3. Condensadores: Los Tanques de Reserva",
+                intro: "Imagina un globo que llenas de agua poco a poco y puedes reventar de golpe para sacar toda el agua. Eso es un condensador.",
+                definicion: "Almacenan energía eléctrica y la liberan cuando se necesita. También sirven como filtros para limpiar señales 'sucias'.",
+                funcionamiento: "Tienen dos placas separadas por un aislante. Los <strong>Electrolíticos</strong> guardan mucha energía pero son lentos y tienen polaridad (+ y -). Los <strong>Cerámicos</strong> guardan poca pero son rapidísimos.",
+                ejemplo: "El flash de la cámara de tu celular: la batería no da tanta potencia de golpe, así que el condensador la guarda y ¡BAM! la suelta para el destello. También filtran la energía en los cargadores.",
+                imagen_url: "",
+                desafio: "¿Qué le pasa a un condensador electrolítico si lo conectas al revés (positivo donde va el negativo)?",
+                respuesta: "El aislante interior se destruye, se crea un cortocircuito interno, el condensador se calienta, se hincha y puede explotar lanzando su contenido. ¡Siempre revisa la polaridad!"
+            },
+            {
+                titulo: "4. Rectificadores: Los Guardias de Tráfico",
+                intro: "La electricidad de la pared va y viene como las olas (Corriente Alterna). Tus aparatos necesitan que vaya en una sola dirección (Corriente Directa).",
+                definicion: "Los diodos son válvulas antirretorno. Dejan pasar la corriente en un sentido (Ánodo a Cátodo) y la bloquean en el contrario.",
+                funcionamiento: "Un diodo solo convierte la onda en media onda (corta la mitad). Un <strong>Puente Rectificador</strong> (4 diodos) es un grupo de guardias de tráfico que obligan a TODAS las olas a ir en la misma dirección.",
+                ejemplo: "Ese bloque pesado en el cable de tu laptop es un puente rectificador convirtiendo la CA de la pared en CD para tu computadora. Los LEDs también son diodos que brillan al dejar pasar la corriente.",
+                imagen_url: "",
+                desafio: "Si conectas una batería directamente al Cátodo (la línea del símbolo) de un diodo, ¿se encenderá un LED?",
+                respuesta: "No. El diodo actúa como un muro en esa dirección. La corriente debe entrar por el Ánodo (la flecha) y salir por el Cátodo para que el LED encienda."
+            },
+            {
+                titulo: "5. Transistores: Los Interruptores Mágicos",
+                intro: "El componente más importante del siglo XX. Sin él, no existirían las computadoras ni internet.",
+                definicion: "Es un interruptor que se controla con electricidad, no con tu mano. También es un amplificador (un megáfono para señales débiles).",
+                funcionamiento: "Tiene 3 patitas: Base, Colector y Emisor. Si le das un hilito de corriente a la Base, abre la compuerta para que pase un río de corriente del Colector al Emisor. Una corriente minúscula controla una gigante.",
+                ejemplo: "Procesadores: Miles de millones de transistores encendiendo (1) y apagándose (0) crean el código binario de tus videojuegos. Amplificadores: Toman la señal débil de un micrófono y la convierten en el sonido de un concierto.",
+                imagen_url: "",
+                desafio: "Si un sensor LDR produce una corriente muy pequeñita al detectar luz, y queremos que encienda una luz gigante de neón, ¿qué componente necesitamos?",
+                respuesta: "¡Un transistor! Actuará como amplificador. Tomará la señal débil del LDR en su Base, y dejará que la corriente grande del Colector encienda la luz de neón."
+            },
+            {
+                titulo: "6. Tiristores y Triacs: Los Interruptores Pegajosos",
+                intro: "Son primos de los transistores, pero tercos: una vez que los enciendes, se quedan encendidos aunque quites la señal.",
+                definicion: "<strong>SCR:</strong> Deja pasar la corriente en una dirección y se queda pegado. <strong>Triac:</strong> Como dos SCR espalda con espalda, controla corriente que va y viene (CA).",
+                funcionamiento: "Tienen una patita llamada Compuerta. Un pulsito ahí los enciende para siempre. Solo se apagan si cortas la energía principal (como una alarma de incendio).",
+                ejemplo: "El 'dimmer' o regulador de la luz de tu sala usa un Triac. Gira la perilla y el Triac corta 'pedazos' de la onda eléctrica, haciendo que la bombilla reciba menos energía y brille menos.",
+                imagen_url: "",
+                desafio: "Diseña en tu mente una alarma de puerta con un SCR. ¿Cómo harías para apagar la alarma sin desconectar la batería principal?",
+                respuesta: "Necesitarías un botón de 'Reset' que, al presionarlo, corte momentáneamente la corriente que pasa por el SCR. Al cortarse la energía un instante, el SCR se 'despega' y se apaga."
+            },
+            {
+                titulo: "7. Circuitos Integrados: Ciudades Microscópicas",
+                intro: "Imagina meter cientos de resistores, diodos y transistores en una pastilla del tamaño de tu uña. Eso es un CI o Microchip.",
+                definicion: "Ciudades electrónicas completas miniaturizadas en silicio. No ves las calles internas, solo las autopistas que salen al exterior (los pines).",
+                funcionamiento: "El <strong>Temporizador 555</strong> es como un metrónomo: hace parpadear luces o cuenta tiempos exactos si le pones resistores y condensadores afuera. Las <strong>Compuertas Lógicas</strong> son jueces: AND (enciende si A Y B), OR (enciende si A O B).",
+                ejemplo: "El cerebro de tu smartphone o la placa de tu consola. Hasta el sensor de tu control que detecta cuando lo agitas es un pequeño CI.",
+                imagen_url: "",
+                desafio: "Estás haciendo una alarma de coche. Debe sonar si se abre la puerta O si se rompe el cristal. ¿Qué compuerta lógica necesitas?",
+                respuesta: "Una compuerta OR (O). Con ella, si el sensor de la puerta se activa O el sensor del cristal se activa, la salida será 1 (encendido) y la alarma sonará."
+            },
+            {
+                titulo: "8. Elaboración de Proyectos: Del Caos al Prototipo",
+                intro: "Armar circuitos no es meter componentes al azar. Requiere un método ágil paso a paso.",
+                definicion: "Metodología para pasar de una idea a un circuito funcional sin volverte loco.",
+                funcionamiento: "<strong>1. Define</strong> el problema.<br><strong>2. Idea</strong> los componentes.<br><strong>3. Dibuja</strong> el esquemático.<br><strong>4. Simula</strong> primero (Tinkercad).<br><strong>5. Monta</strong> en Protoboard.<br><strong>6. Depura (Debug)</strong>: ¿No funciona? Revisa conexiones.",
+                ejemplo: "Quieres una luz automática: Defines que necesitas LDR+Transistor+LED. Lo dibujas, lo pruebas en Tinkercad. Si explota en la PC, corriges. Luego lo armas físico. Si no enciende, depuras: ¿El transistor está al revés?",
+                imagen_url: "",
+                desafio: "Armas un circuito en la protoboard, lo conectas a la batería y... no pasa nada. ¿Cuál es el primer checklist que debes hacer?",
+                respuesta: "1. ¿Está encendida la batería? 2. ¿Están los componentes en las filas correctas de la protoboard? 3. ¿El LED está al revés? 4. ¿Hay un cortocircuito? (Nunca asumas que el componente está quemado al principio)."
+            },
+            {
+                titulo: "9. Seguridad: Reglas para no volverse un Resistor",
+                intro: "La electricidad no se ve, pero muerde. Reglas de oro para adolescentes curiosos.",
+                definicion: "Protocolos para experimentar sin sufrir quemaduras ni destruir componentes.",
+                funcionamiento: "<strong>Regla 1:</strong> Nunca conectes directo a la pared (usar baterías 9V o menos).<br><strong>Regla 2:</strong> Cuidado con cortocircuitos (+ tocando -).<br><strong>Regla 3:</strong> Usa gafas (condensadores pueden explotar).<br><strong>Regla 4:</strong> Mano en el bolsillo si hay voltajes altos.<br><strong>Regla 5:</strong> ¿Huele a quemado? Corta la energía ya.",
+                ejemplo: "Pones un condensador electrolítico al revés en un circuito de 12V. Se calienta, explota y te lanza trozos de aluminio a los ojos. Con gafas te salvaste la vista. Sin gafas, tendrías que ir al hospital.",
+                imagen_url: "",
+                desafio: "¿Por qué la regla de "mano en el bolsillo" es vital cuando se trabaja con voltajes altos?",
+                respuesta: "Si tocas un cable vivo con una mano y estás apoyado en tierra, la corriente pasará de tu mano a tus pies. Si usas las dos manos y una toca vivo y la otra tierra, la corriente puede pasar por tu pecho y detener tu corazón."
+            },
+            {
+                titulo: "10. Simulación: Tu Superpoder Oculto",
+                intro: "Los ingenieros de Apple y NASA no sueldan a la primera. Se equivocan en la computadora. Tú también debes hacerlo.",
+                definicion: "Usar software (como Tinkercad Circuits) para armar circuitos virtuales antes de gastar dinero y tiempo en lo físico.",
+                funcionamiento: "Arrastras componentes, los conectas y le das a "Simular". Si hay un cortocircuito, el programa te avisa. Puedes ver la corriente fluyendo y los voltajes en tiempo real sin riesgo de quemaduras.",
+                ejemplo: "Quieres armar una alarma con el chip 555. Lo intentas físico y no suena. ¿El chip está mal? ¿El cable? En Tinkercad, las conexiones son perfectas. Si no suena, es que tu lógica matemática está mal, no los componentes.",
+                imagen_url: "",
+                desafio: "¿Cuál es la principal ventaja de simular un circuito antes de armarlo físico respecto a la resolución de problemas (Debugging)?",
+                respuesta: "Elimina las variables físicas (cables rotos, malos contactos, componentes defectuosos). Si el circuito no funciona en simulación, sabes al 100% que es un error de diseño o lógica, lo que te obliga a entender la teoría en lugar de simplemente mover cables al azar."
+            }
+        ];
 
-    <!-- Toolbar -->
-    <div class="toolbar">
-      <div class="section-title">registro de accesos</div>
-      <div class="filter-group">
-        <button class="btn-filter active-all"     onclick="setFilter('all')"     id="fAll">TODOS</button>
-        <button class="btn-filter"                onclick="setFilter('allowed')" id="fAllowed">PERMITIDOS</button>
-        <button class="btn-filter"                onclick="setFilter('denied')"  id="fDenied">DENEGADOS</button>
-      </div>
-      <input class="search-box" type="text" placeholder="buscar nombre / CI…"
-             id="searchInput" oninput="renderTable()">
-      <button class="btn-export" onclick="exportCSV()">⬇ exportar CSV</button>
-    </div>
+        // ==========================================
+        // 🎨 RENDERIZADO DINÁMICO
+        // ==========================================
+        let currentTopic = 0;
 
-    <!-- Tabla -->
-    <div class="table-wrap">
-      <table id="mainTable">
-        <thead>
-          <tr>
-            <th>timestamp</th>
-            <th>id</th>
-            <th>nombre</th>
-            <th>ci</th>
-            <th>teléfono</th>
-            <th>estado</th>
-            <th>confianza</th>
-            <th>dispositivo</th>
-          </tr>
-        </thead>
-        <tbody id="tableBody">
-          <tr>
-            <td colspan="8">
-              <div class="state-box">
-                <div class="spinner"></div>
-                <p>conectando a firebase…</p>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        function loadTopic(index) {
+            currentTopic = index;
+            const tema = temas[index];
+            const mainContent = document.getElementById('main-content');
+            
+            // Actualizar Sidebar activa
+            document.querySelectorAll('.nav-item').forEach((item, i) => {
+                item.classList.toggle('active', i === index);
+            });
 
-  </main>
-
-  <!-- ══ FOOTER ══════════════════════════════════════════ -->
-  <footer>
-    <span>ARISTARCO BIOMETRIC SYSTEM &nbsp;|&nbsp; ESP32 + AS608 &nbsp;|&nbsp; v2.1</span>
-    <span>firebase: <a href="https://console.firebase.google.com" target="_blank">aristarco-biometric</a></span>
-  </footer>
-
-
-  <!-- ══ FIREBASE SDK ════════════════════════════════════ -->
-  <script type="module">
-    import { initializeApp }         from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-    import { getDatabase, ref, onValue }
-                                     from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
-
-    // ── Configuración Firebase (tus credenciales) ──────
-    const firebaseConfig = {
-      apiKey:            "AIzaSyD9zbqKpiB-XWxkPDCxgHEKlZIIEqPdWqw",
-      authDomain:        "aristarco-biometric.firebaseapp.com",
-      projectId:         "aristarco-biometric",
-      storageBucket:     "aristarco-biometric.firebasestorage.app",
-      messagingSenderId: "168157898078",
-      appId:             "1:168157898078:web:b87a773d8fea40c252dbcf",
-      databaseURL:       "https://aristarco-biometric-default-rtdb.firebaseio.com"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db  = getDatabase(app);
-
-    // ── Estado global ──────────────────────────────────
-    window._allRecords = [];
-    window._filter     = 'all';
-
-    // ── Escuchar cambios en tiempo real ────────────────
-    const accesosRef = ref(db, 'accesos');
-
-    onValue(accesosRef, (snapshot) => {
-
-      setStatus('online', 'EN LÍNEA');
-
-      const data = snapshot.val();
-
-      if (!data) {
-        window._allRecords = [];
-        renderTable();
-        updateStats();
-        return;
-      }
-
-      // Convertir objeto Firebase en array ordenado (más reciente primero)
-      const records = Object.entries(data).map(([key, val]) => ({
-        key,
-        timestamp:    val.timestamp    || '—',
-        timestamp_ms: val.timestamp_ms || 0,
-        userId:       val.userId       ?? '—',
-        nombre:       val.nombre       || 'DESCONOCIDO',
-        ci:           val.ci           || '—',
-        correo:       val.correo       || '—',
-        telefono:     val.telefono     || '—',
-        estado:       val.estado       || '—',
-        confianza:    val.confianza    ?? 0,
-        dispositivo:  val.dispositivo  || '—',
-      }));
-
-      records.sort((a, b) => b.timestamp_ms - a.timestamp_ms);
-
-      window._allRecords = records;
-
-      renderTable();
-      updateStats();
-      updateLatestBanner(records[0]);
-
-    }, (error) => {
-      console.error('Firebase error:', error);
-      setStatus('offline', 'ERROR');
-      showError('No se pudo conectar a Firebase. Verifica las reglas de seguridad.');
-    });
-
-    // ── Conexión de red ────────────────────────────────
-    window.addEventListener('offline', () => setStatus('offline', 'SIN RED'));
-    window.addEventListener('online',  () => setStatus('loading', 'RECONECTANDO…'));
-
-  </script>
-
-  <!-- ══ LÓGICA DE UI ════════════════════════════════════ -->
-  <script>
-
-    // ── Estado del filtro ──────────────────────────────
-    function setFilter(f) {
-      window._filter = f;
-      ['all','allowed','denied'].forEach(k => {
-        const btn = document.getElementById('f' + k.charAt(0).toUpperCase() + k.slice(1));
-        btn.className = 'btn-filter';
-      });
-      const map = { all: 'active-all', allowed: 'active-allowed', denied: 'active-denied' };
-      document.getElementById('f' + f.charAt(0).toUpperCase() + f.slice(1)).classList.add(map[f]);
-      renderTable();
-    }
-
-    // ── Renderizar tabla ───────────────────────────────
-    function renderTable() {
-      const tbody  = document.getElementById('tableBody');
-      const query  = (document.getElementById('searchInput').value || '').toLowerCase().trim();
-      const filter = window._filter;
-      const all    = window._allRecords || [];
-
-      const visible = all.filter(r => {
-        const matchFilter = filter === 'all'
-          || (filter === 'allowed' && r.estado === 'PERMITIDO')
-          || (filter === 'denied'  && r.estado === 'DENEGADO');
-
-        const matchSearch = !query
-          || r.nombre.toLowerCase().includes(query)
-          || r.ci.toLowerCase().includes(query)
-          || String(r.userId).includes(query);
-
-        return matchFilter && matchSearch;
-      });
-
-      if (visible.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="8">
-              <div class="state-box">
-                <div class="state-icon">◈</div>
-                <p>${all.length === 0 ? 'sin registros en firebase todavía' : 'ningún resultado para la búsqueda'}</p>
-              </div>
-            </td>
-          </tr>`;
-        return;
-      }
-
-      tbody.innerHTML = visible.map((r, i) => {
-        const allowed  = r.estado === 'PERMITIDO';
-        const confPct  = Math.min(100, Math.round((r.confianza / 255) * 100));
-        const confColor = confPct > 60 ? 'var(--accent)' : confPct > 30 ? 'var(--warn)' : 'var(--danger)';
-
-        return `
-          <tr style="animation-delay:${i * 0.03}s">
-            <td class="td-timestamp">${escHtml(r.timestamp)}</td>
-            <td class="td-id">${escHtml(String(r.userId))}</td>
-            <td class="td-nombre">${escHtml(r.nombre)}</td>
-            <td class="td-ci">${escHtml(r.ci)}</td>
-            <td class="td-tel">${escHtml(r.telefono)}</td>
-            <td>
-              <span class="badge ${allowed ? 'badge-allowed' : 'badge-denied'}">
-                ${allowed ? 'PERMITIDO' : 'DENEGADO'}
-              </span>
-            </td>
-            <td class="td-confianza">
-              <div class="conf-bar">
-                <div class="conf-track">
-                  <div class="conf-fill" style="width:${confPct}%;background:${confColor}"></div>
+            // Construir el HTML
+            mainContent.innerHTML = `
+                <div class="header">
+                    <h1>${tema.titulo}</h1>
+                    <p>${tema.intro}</p>
                 </div>
-                <span style="color:${confColor}">${r.confianza}</span>
-              </div>
-            </td>
-            <td class="td-ci" style="color:var(--muted)">${escHtml(r.dispositivo)}</td>
-          </tr>`;
-      }).join('');
-    }
 
-    // ── Estadísticas ───────────────────────────────────
-    function updateStats() {
-      const all     = window._allRecords || [];
-      const allowed = all.filter(r => r.estado === 'PERMITIDO').length;
-      const denied  = all.filter(r => r.estado === 'DENEGADO').length;
-      const users   = new Set(all.filter(r => r.estado === 'PERMITIDO').map(r => r.userId)).size;
+                <div class="grid-container">
+                    <!-- Imagen (Placeholder para GitHub) -->
+                    <div class="card image-card">
+                        ${tema.imagen_url 
+                            ? `<img src="${tema.imagen_url}" alt="${tema.titulo}">` 
+                            : `<div class="placeholder-img">
+                                <i class="fas fa-image"></i>
+                                <p>Espacio reservado para la imagen de GitHub</p>
+                               </div>`
+                        }
+                    </div>
 
-      animateCount('statTotal',   all.length);
-      animateCount('statAllowed', allowed);
-      animateCount('statDenied',  denied);
-      animateCount('statUsers',   users);
-    }
+                    <!-- ¿Qué es? -->
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-question-circle"></i> ¿Qué es?</div>
+                        <div class="card-text">${tema.definicion}</div>
+                    </div>
 
-    function animateCount(id, target) {
-      const el  = document.getElementById(id);
-      const now = parseInt(el.textContent) || 0;
-      if (now === target) return;
-      const step = Math.ceil(Math.abs(target - now) / 12);
-      let   cur  = now;
-      const iv   = setInterval(() => {
-        cur += (target > cur ? 1 : -1) * step;
-        if ((target > now && cur >= target) || (target < now && cur <= target)) {
-          cur = target; clearInterval(iv);
+                    <!-- ¿Cómo funciona? -->
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-cogs"></i> ¿Cómo funciona?</div>
+                        <div class="card-text">${tema.funcionamiento}</div>
+                    </div>
+
+                    <!-- Ejemplo Real -->
+                    <div class="card">
+                        <div class="card-title"><i class="fas fa-globe-americas"></i> Ejemplo en el Mundo Real</div>
+                        <div class="card-text">${tema.ejemplo}</div>
+                    </div>
+
+                    <!-- Desafío -->
+                    <div class="card challenge-card">
+                        <div class="card-title"><i class="fas fa-brain"></i> Desafío Mental</div>
+                        <div class="card-text">${tema.desafio}</div>
+                        <button class="btn-solve" onclick="showAnswer(${index})">
+                            <i class="fas fa-key"></i> Ver Respuesta
+                        </button>
+                    </div>
+                </div>
+            `;
         }
-        el.textContent = cur;
-      }, 30);
-    }
 
-    // ── Último evento banner ───────────────────────────
-    function updateLatestBanner(r) {
-      if (!r) return;
-      const banner  = document.getElementById('latestBanner');
-      const content = document.getElementById('latestContent');
-      const time    = document.getElementById('latestTime');
+        function showAnswer(index) {
+            const modal = document.getElementById('modal');
+            const answerText = document.getElementById('modal-answer');
+            answerText.innerHTML = temas[index].respuesta;
+            modal.style.display = 'flex';
+        }
 
-      const allowed = r.estado === 'PERMITIDO';
-      banner.className = 'latest-banner show' + (allowed ? '' : ' denied');
-      content.innerHTML = allowed
-        ? `✔ <strong style="color:#eef0f3">${escHtml(r.nombre)}</strong> — acceso concedido &nbsp;|&nbsp; CI: ${escHtml(r.ci)} &nbsp;|&nbsp; confianza: ${r.confianza}`
-        : `✖ acceso denegado &nbsp;|&nbsp; ID: ${escHtml(String(r.userId))} &nbsp;|&nbsp; confianza: ${r.confianza}`;
-      time.textContent = r.timestamp;
-    }
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
 
-    // ── Estado de conexión ─────────────────────────────
-    function setStatus(cls, text) {
-      const el = document.getElementById('connStatus');
-      el.className = 'connection-status ' + cls;
-      el.textContent = text;
-    }
+        // Cerrar modal si se hace clic fuera
+        window.onclick = function(event) {
+            const modal = document.getElementById('modal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
 
-    // ── Mostrar error en tabla ─────────────────────────
-    function showError(msg) {
-      document.getElementById('tableBody').innerHTML = `
-        <tr>
-          <td colspan="8">
-            <div class="state-box">
-              <div class="state-icon" style="color:var(--danger)">⚠</div>
-              <p style="color:var(--danger)">${msg}</p>
-            </div>
-          </td>
-        </tr>`;
-    }
-
-    // ── Exportar CSV ───────────────────────────────────
-    function exportCSV() {
-      const all = window._allRecords || [];
-      if (all.length === 0) { alert('No hay datos para exportar.'); return; }
-
-      const header = ['timestamp','userId','nombre','ci','correo','telefono','estado','confianza','dispositivo'];
-      const rows   = all.map(r => header.map(k => `"${String(r[k] ?? '').replace(/"/g,'""')}"`).join(','));
-      const csv    = [header.join(','), ...rows].join('\n');
-
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url  = URL.createObjectURL(blob);
-      const a    = Object.assign(document.createElement('a'), {
-        href: url,
-        download: `accesos_${new Date().toISOString().slice(0,10)}.csv`
-      });
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-
-    // ── Escape HTML ────────────────────────────────────
-    function escHtml(s) {
-      return String(s)
-        .replace(/&/g,'&amp;')
-        .replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;');
-    }
-
-    // Exponer al scope global para los botones
-    window.setFilter   = setFilter;
-    window.renderTable = renderTable;
-    window.exportCSV   = exportCSV;
-
-  </script>
+        // Inicializar la aplicación con el primer tema
+        loadTopic(0);
+    </script>
 </body>
 </html>
