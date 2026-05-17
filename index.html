@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aristarco — Control de Acceso Biométrico</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600&family=Barlow+Condensed:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg:        #0b0e11;
+      --bg2:       #111519;
+      --bg3:       #181d23;
+      --border:    #1e2730;
+      --border2:   #263040;
+      --text:      #c8d0da;
+      --muted:     #4a5568;
+      --accent:    #00c896;
+      --accent2:   #00a87c;
+      --danger:    #ff4d6a;
+      --danger2:   #cc3a54;
+      --warn:      #f0a500;
+      --mono:      'Share Tech Mono', monospace;
+      --sans:      'Barlow', sans-serif;
+      --cond:      'Barlow Condensed', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── SCANLINE overlay ───────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    /* ── HEADER ─────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 64px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo-icon::after {
+      content: '';
+      width: 14px;
+      height: 14px;
+      background: var(--bg);
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    }
+
+    .logo-text {
+      font-family: var(--cond);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #fff;
+    }
+
+    .logo-text span { color: var(--accent); }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    .connection-status {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 3px;
+      border: 1px solid;
+      letter-spacing: 0.06em;
+    }
+    .connection-status.online  { color: var(--accent); border-color: var(--accent2); background: rgba(0,200,150,0.07); }
+    .connection-status.offline { color: var(--danger); border-color: var(--danger2); background: rgba(255,77,106,0.07); }
+    .connection-status.loading { color: var(--warn);   border-color: var(--warn);    background: rgba(240,165,0,0.07); }
+
+    /* ── MAIN LAYOUT ────────────────────────────────── */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    /* ── STAT CARDS ─────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.2rem 1.4rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .stat-card:hover { border-color: var(--border2); }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px;
+      height: 100%;
+    }
+
+    .stat-card.total::before   { background: #4a90d9; }
+    .stat-card.allowed::before { background: var(--accent); }
+    .stat-card.denied::before  { background: var(--danger); }
+    .stat-card.users::before   { background: var(--warn); }
+
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-family: var(--cond);
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1;
+      color: #fff;
+    }
+
+    .stat-card.allowed .stat-value { color: var(--accent); }
+    .stat-card.denied  .stat-value { color: var(--danger); }
+    .stat-card.users   .stat-value { color: var(--warn); }
+
+    /* ── TOOLBAR ────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .section-title {
+      font-family: var(--cond);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      max-width: 300px;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-filter {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      padding: 5px 12px;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: 3px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-filter:hover { color: var(--text); border-color: var(--text); }
+    .btn-filter.active-all      { color: #fff;           border-color: #4a90d9; background: rgba(74,144,217,0.1); }
+    .btn-filter.active-allowed  { color: var(--accent);  border-color: var(--accent2); background: rgba(0,200,150,0.08); }
+    .btn-filter.active-denied   { color: var(--danger);  border-color: var(--danger2); background: rgba(255,77,106,0.08); }
+
+    .search-box {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 3px;
+      color: var(--text);
+      padding: 5px 12px;
+      width: 200px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .search-box::placeholder { color: var(--muted); }
+    .search-box:focus { border-color: var(--accent2); }
+
+    .btn-export {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      padding: 5px 14px;
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: 3px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-left: auto;
+    }
+    .btn-export:hover { color: var(--warn); border-color: var(--warn); }
+
+    /* ── TABLE ──────────────────────────────────────── */
+    .table-wrap {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg3);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s;
+      animation: rowIn 0.35s ease both;
+    }
+
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg3); }
+
+    tbody td {
+      padding: 11px 16px;
+      vertical-align: middle;
+      font-size: 13px;
+    }
+
+    .td-timestamp {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .td-id {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #4a90d9;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .td-nombre {
+      font-weight: 600;
+      color: #eef0f3;
+    }
+
+    .td-ci, .td-tel {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .td-confianza {
+      font-family: var(--mono);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      padding: 3px 10px;
+      border-radius: 2px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .badge-allowed {
+      color: var(--accent);
+      background: rgba(0,200,150,0.1);
+      border: 1px solid rgba(0,200,150,0.25);
+    }
+
+    .badge-denied {
+      color: var(--danger);
+      background: rgba(255,77,106,0.1);
+      border: 1px solid rgba(255,77,106,0.25);
+    }
+
+    .badge::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+    }
+
+    .badge-allowed::before { background: var(--accent); }
+    .badge-denied::before  { background: var(--danger); }
+
+    .conf-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .conf-track {
+      width: 60px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .conf-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+
+    /* ── EMPTY / LOADING STATES ─────────────────────── */
+    .state-box {
+      text-align: center;
+      padding: 5rem 2rem;
+      color: var(--muted);
+    }
+
+    .state-box .state-icon {
+      font-size: 48px;
+      margin-bottom: 1rem;
+      opacity: 0.3;
+    }
+
+    .state-box p {
+      font-family: var(--mono);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── LATEST EVENT BANNER ────────────────────────── */
+    .latest-banner {
+      display: none;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 4px;
+      padding: 1rem 1.4rem;
+      font-family: var(--mono);
+      font-size: 12px;
+      animation: slideDown 0.4s ease;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .latest-banner.denied { border-left-color: var(--danger); }
+    .latest-banner.show   { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+
+    .latest-label {
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .latest-content { flex: 1; color: var(--text); }
+    .latest-time    { color: var(--muted); font-size: 11px; flex-shrink: 0; }
+
+    /* ── FOOTER ─────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.2rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    footer a { color: var(--accent2); text-decoration: none; }
+
+    /* ── RESPONSIVE ─────────────────────────────────── */
+    @media (max-width: 768px) {
+      main { padding: 1rem; }
+      header { padding: 0 1rem; }
+      .logo-text { font-size: 16px; }
+      .td-tel, .td-correo { display: none; }
+      .search-box { width: 140px; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ══ HEADER ══════════════════════════════════════════ -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon"></div>
+      <span class="logo-text">Aristarco <span>//</span> Acceso</span>
+    </div>
+    <div class="header-right">
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        TIEMPO REAL
+      </div>
+      <div class="connection-status loading" id="connStatus">CONECTANDO…</div>
+    </div>
+  </header>
+
+  <!-- ══ MAIN ════════════════════════════════════════════ -->
+  <main>
+
+    <!-- Estadísticas -->
+    <div class="stats-grid">
+      <div class="stat-card total">
+        <div class="stat-label">total registros</div>
+        <div class="stat-value" id="statTotal">—</div>
+      </div>
+      <div class="stat-card allowed">
+        <div class="stat-label">accesos permitidos</div>
+        <div class="stat-value" id="statAllowed">—</div>
+      </div>
+      <div class="stat-card denied">
+        <div class="stat-label">accesos denegados</div>
+        <div class="stat-value" id="statDenied">—</div>
+      </div>
+      <div class="stat-card users">
+        <div class="stat-label">usuarios únicos</div>
+        <div class="stat-value" id="statUsers">—</div>
+      </div>
+    </div>
+
+    <!-- Último evento -->
+    <div class="latest-banner" id="latestBanner">
+      <span class="latest-label">último evento</span>
+      <span class="latest-content" id="latestContent">—</span>
+      <span class="latest-time" id="latestTime">—</span>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="section-title">registro de accesos</div>
+      <div class="filter-group">
+        <button class="btn-filter active-all"     onclick="setFilter('all')"     id="fAll">TODOS</button>
+        <button class="btn-filter"                onclick="setFilter('allowed')" id="fAllowed">PERMITIDOS</button>
+        <button class="btn-filter"                onclick="setFilter('denied')"  id="fDenied">DENEGADOS</button>
+      </div>
+      <input class="search-box" type="text" placeholder="buscar nombre / CI…"
+             id="searchInput" oninput="renderTable()">
+      <button class="btn-export" onclick="exportCSV()">⬇ exportar CSV</button>
+    </div>
+
+    <!-- Tabla -->
+    <div class="table-wrap">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th>timestamp</th>
+            <th>id</th>
+            <th>nombre</th>
+            <th>ci</th>
+            <th>teléfono</th>
+            <th>estado</th>
+            <th>confianza</th>
+            <th>dispositivo</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr>
+            <td colspan="8">
+              <div class="state-box">
+                <div class="spinner"></div>
+                <p>conectando a firebase…</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <!-- ══ FOOTER ══════════════════════════════════════════ -->
+  <footer>
+    <span>ARISTARCO BIOMETRIC SYSTEM &nbsp;|&nbsp; ESP32 + AS608 &nbsp;|&nbsp; v2.1</span>
+    <span>firebase: <a href="https://console.firebase.google.com" target="_blank">aristarco-biometric</a></span>
+  </footer>
+
+
+  <!-- ══ FIREBASE SDK ════════════════════════════════════ -->
+  <script type="module">
+    import { initializeApp }         from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+    import { getDatabase, ref, onValue }
+                                     from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+    // ── Configuración Firebase (tus credenciales) ──────
+    const firebaseConfig = {
+      apiKey:            "AIzaSyD9zbqKpiB-XWxkPDCxgHEKlZIIEqPdWqw",
+      authDomain:        "aristarco-biometric.firebaseapp.com",
+      projectId:         "aristarco-biometric",
+      storageBucket:     "aristarco-biometric.firebasestorage.app",
+      messagingSenderId: "168157898078",
+      appId:             "1:168157898078:web:b87a773d8fea40c252dbcf",
+      databaseURL:       "https://aristarco-biometric-default-rtdb.firebaseio.com"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+
+    // ── Estado global ──────────────────────────────────
+    window._allRecords = [];
+    window._filter     = 'all';
+
+    // ── Escuchar cambios en tiempo real ────────────────
+    const accesosRef = ref(db, 'accesos');
+
+    onValue(accesosRef, (snapshot) => {
+
+      setStatus('online', 'EN LÍNEA');
+
+      const data = snapshot.val();
+
+      if (!data) {
+        window._allRecords = [];
+        renderTable();
+        updateStats();
+        return;
+      }
+
+      // Convertir objeto Firebase en array ordenado (más reciente primero)
+      const records = Object.entries(data).map(([key, val]) => ({
+        key,
+        timestamp:    val.timestamp    || '—',
+        timestamp_ms: val.timestamp_ms || 0,
+        userId:       val.userId       ?? '—',
+        nombre:       val.nombre       || 'DESCONOCIDO',
+        ci:           val.ci           || '—',
+        correo:       val.correo       || '—',
+        telefono:     val.telefono     || '—',
+        estado:       val.estado       || '—',
+        confianza:    val.confianza    ?? 0,
+        dispositivo:  val.dispositivo  || '—',
+      }));
+
+      records.sort((a, b) => b.timestamp_ms - a.timestamp_ms);
+
+      window._allRecords = records;
+
+      renderTable();
+      updateStats();
+      updateLatestBanner(records[0]);
+
+    }, (error) => {
+      console.error('Firebase error:', error);
+      setStatus('offline', 'ERROR');
+      showError('No se pudo conectar a Firebase. Verifica las reglas de seguridad.');
+    });
+
+    // ── Conexión de red ────────────────────────────────
+    window.addEventListener('offline', () => setStatus('offline', 'SIN RED'));
+    window.addEventListener('online',  () => setStatus('loading', 'RECONECTANDO…'));
+
+  </script>
+
+  <!-- ══ LÓGICA DE UI ════════════════════════════════════ -->
+  <script>
+
+    // ── Estado del filtro ──────────────────────────────
+    function setFilter(f) {
+      window._filter = f;
+      ['all','allowed','denied'].forEach(k => {
+        const btn = document.getElementById('f' + k.charAt(0).toUpperCase() + k.slice(1));
+        btn.className = 'btn-filter';
+      });
+      const map = { all: 'active-all', allowed: 'active-allowed', denied: 'active-denied' };
+      document.getElementById('f' + f.charAt(0).toUpperCase() + f.slice(1)).classList.add(map[f]);
+      renderTable();
+    }
+
+    // ── Renderizar tabla ───────────────────────────────
+    function renderTable() {
+      const tbody  = document.getElementById('tableBody');
+      const query  = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+      const filter = window._filter;
+      const all    = window._allRecords || [];
+
+      const visible = all.filter(r => {
+        const matchFilter = filter === 'all'
+          || (filter === 'allowed' && r.estado === 'PERMITIDO')
+          || (filter === 'denied'  && r.estado === 'DENEGADO');
+
+        const matchSearch = !query
+          || r.nombre.toLowerCase().includes(query)
+          || r.ci.toLowerCase().includes(query)
+          || String(r.userId).includes(query);
+
+        return matchFilter && matchSearch;
+      });
+
+      if (visible.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8">
+              <div class="state-box">
+                <div class="state-icon">◈</div>
+                <p>${all.length === 0 ? 'sin registros en firebase todavía' : 'ningún resultado para la búsqueda'}</p>
+              </div>
+            </td>
+          </tr>`;
+        return;
+      }
+
+      tbody.innerHTML = visible.map((r, i) => {
+        const allowed  = r.estado === 'PERMITIDO';
+        const confPct  = Math.min(100, Math.round((r.confianza / 255) * 100));
+        const confColor = confPct > 60 ? 'var(--accent)' : confPct > 30 ? 'var(--warn)' : 'var(--danger)';
+
+        return `
+          <tr style="animation-delay:${i * 0.03}s">
+            <td class="td-timestamp">${escHtml(r.timestamp)}</td>
+            <td class="td-id">${escHtml(String(r.userId))}</td>
+            <td class="td-nombre">${escHtml(r.nombre)}</td>
+            <td class="td-ci">${escHtml(r.ci)}</td>
+            <td class="td-tel">${escHtml(r.telefono)}</td>
+            <td>
+              <span class="badge ${allowed ? 'badge-allowed' : 'badge-denied'}">
+                ${allowed ? 'PERMITIDO' : 'DENEGADO'}
+              </span>
+            </td>
+            <td class="td-confianza">
+              <div class="conf-bar">
+                <div class="conf-track">
+                  <div class="conf-fill" style="width:${confPct}%;background:${confColor}"></div>
+                </div>
+                <span style="color:${confColor}">${r.confianza}</span>
+              </div>
+            </td>
+            <td class="td-ci" style="color:var(--muted)">${escHtml(r.dispositivo)}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    // ── Estadísticas ───────────────────────────────────
+    function updateStats() {
+      const all     = window._allRecords || [];
+      const allowed = all.filter(r => r.estado === 'PERMITIDO').length;
+      const denied  = all.filter(r => r.estado === 'DENEGADO').length;
+      const users   = new Set(all.filter(r => r.estado === 'PERMITIDO').map(r => r.userId)).size;
+
+      animateCount('statTotal',   all.length);
+      animateCount('statAllowed', allowed);
+      animateCount('statDenied',  denied);
+      animateCount('statUsers',   users);
+    }
+
+    function animateCount(id, target) {
+      const el  = document.getElementById(id);
+      const now = parseInt(el.textContent) || 0;
+      if (now === target) return;
+      const step = Math.ceil(Math.abs(target - now) / 12);
+      let   cur  = now;
+      const iv   = setInterval(() => {
+        cur += (target > cur ? 1 : -1) * step;
+        if ((target > now && cur >= target) || (target < now && cur <= target)) {
+          cur = target; clearInterval(iv);
+        }
+        el.textContent = cur;
+      }, 30);
+    }
+
+    // ── Último evento banner ───────────────────────────
+    function updateLatestBanner(r) {
+      if (!r) return;
+      const banner  = document.getElementById('latestBanner');
+      const content = document.getElementById('latestContent');
+      const time    = document.getElementById('latestTime');
+
+      const allowed = r.estado === 'PERMITIDO';
+      banner.className = 'latest-banner show' + (allowed ? '' : ' denied');
+      content.innerHTML = allowed
+        ? `✔ <strong style="color:#eef0f3">${escHtml(r.nombre)}</strong> — acceso concedido &nbsp;|&nbsp; CI: ${escHtml(r.ci)} &nbsp;|&nbsp; confianza: ${r.confianza}`
+        : `✖ acceso denegado &nbsp;|&nbsp; ID: ${escHtml(String(r.userId))} &nbsp;|&nbsp; confianza: ${r.confianza}`;
+      time.textContent = r.timestamp;
+    }
+
+    // ── Estado de conexión ─────────────────────────────
+    function setStatus(cls, text) {
+      const el = document.getElementById('connStatus');
+      el.className = 'connection-status ' + cls;
+      el.textContent = text;
+    }
+
+    // ── Mostrar error en tabla ─────────────────────────
+    function showError(msg) {
+      document.getElementById('tableBody').innerHTML = `
+        <tr>
+          <td colspan="8">
+            <div class="state-box">
+              <div class="state-icon" style="color:var(--danger)">⚠</div>
+              <p style="color:var(--danger)">${msg}</p>
+            </div>
+          </td>
+        </tr>`;
+    }
+
+    // ── Exportar CSV ───────────────────────────────────
+    function exportCSV() {
+      const all = window._allRecords || [];
+      if (all.length === 0) { alert('No hay datos para exportar.'); return; }
+
+      const header = ['timestamp','userId','nombre','ci','correo','telefono','estado','confianza','dispositivo'];
+      const rows   = all.map(r => header.map(k => `"${String(r[k] ?? '').replace(/"/g,'""')}"`).join(','));
+      const csv    = [header.join(','), ...rows].join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const a    = Object.assign(document.createElement('a'), {
+        href: url,
+        download: `accesos_${new Date().toISOString().slice(0,10)}.csv`
+      });
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // ── Escape HTML ────────────────────────────────────
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+    }
+
+    // Exponer al scope global para los botones
+    window.setFilter   = setFilter;
+    window.renderTable = renderTable;
+    window.exportCSV   = exportCSV;
+
+  </script>
+</body>
+</html>
