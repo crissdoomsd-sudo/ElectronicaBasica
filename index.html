@@ -3,328 +3,382 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyber-Lab | Inmersión Electrónica</title>
+    <title>Electrónica Básica | Plataforma Interactiva</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* ==========================================
+           VARIABLES Y DISEÑO PROFESIONAL/LIMPIO
+           ========================================== */
         :root {
-            --bg-dark: #0a0e17;
-            --bg-panel: #111827;
-            --bg-card: #1f2937;
-            --neon-cyan: #06b6d4;
-            --neon-purple: #a855f7;
-            --neon-green: #10b981;
-            --neon-orange: #f59e0b;
-            --text-main: #f1f5f9;
-            --text-muted: #94a3b8;
+            --bg-body: #F3F4F6;          /* Gris claro fondo */
+            --bg-sidebar: #111827;       /* Azul oscuro sidebar */
+            --bg-card: #FFFFFF;          /* Blanco tarjetas */
+            --accent-primary: #2563EB;   /* Azul eléctrico principal */
+            --accent-secondary: #7C3AED; /* Violeta secundario */
+            --accent-success: #059669;   /* Verde éxito */
+            --accent-warning: #D97706;   /* Naranja desafío */
+            --text-dark: #1F2937;        /* Texto principal */
+            --text-muted: #6B7280;       /* Texto secundario */
+            --text-light: #F9FAFB;       /* Texto sobre oscuro */
+            --border-light: #E5E7EB;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-dark); display: flex; height: 100vh; overflow: hidden; }
+
+        /* ==========================================
+           SIDEBAR CON INDICADOR DESLIZANTE
+           ========================================== */
+        .sidebar { width: 300px; background: var(--bg-sidebar); color: var(--text-light); display: flex; flex-direction: column; position: relative; z-index: 10; box-shadow: 4px 0 15px rgba(0,0,0,0.1); }
         
-        body { background-color: var(--bg-dark); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        .logo-area { padding: 30px 25px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .logo-area h1 { font-size: 1.4rem; font-weight: 800; color: white; display: flex; align-items: center; gap: 10px; }
+        .logo-area h1 i { color: var(--accent-primary); font-size: 1.5rem; }
+        .logo-area p { font-size: 0.85rem; color: rgba(255,255,255,0.5); margin-top: 5px; }
 
-        /* Scrollbar Cyberpunk */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-panel); }
-        ::-webkit-scrollbar-thumb { background: var(--neon-cyan); border-radius: 4px; }
-
-        /* Sidebar */
-        .sidebar { width: 300px; background: var(--bg-panel); border-right: 1px solid #334155; display: flex; flex-direction: column; padding: 20px 0; overflow-y: auto; box-shadow: 5px 0 15px rgba(0,0,0,0.5); z-index: 10; }
-        .logo { padding: 0 20px 30px; border-bottom: 1px solid #334155; margin-bottom: 20px; }
-        .logo h1 { font-size: 1.8rem; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; letter-spacing: 2px; }
-        .logo p { color: var(--text-muted); font-size: 0.8rem; margin-top: 5px; }
+        .nav-menu { padding: 20px 0; flex: 1; overflow-y: auto; position: relative; }
         
-        .nav-item { display: flex; align-items: center; padding: 15px 25px; color: var(--text-muted); cursor: pointer; transition: all 0.3s; border-left: 4px solid transparent; font-size: 0.95rem; }
-        .nav-item:hover { background: rgba(6, 182, 212, 0.1); color: var(--text-main); }
-        .nav-item.active { background: rgba(6, 182, 212, 0.1); color: var(--neon-cyan); border-left-color: var(--neon-cyan); }
-        .nav-item i { margin-right: 15px; font-size: 1.1rem; width: 20px; text-align: center; }
+        /* El indicador mágico que se desliza */
+        .nav-indicator { position: absolute; left: 15px; right: 15px; height: 45px; background: var(--accent-primary); border-radius: 10px; transition: top 0.35s cubic-bezier(0.4, 0, 0.2, 1); z-index: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); }
+
+        .nav-section { padding: 10px 25px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.3); margin-top: 10px; font-weight: 700; }
         
-        .nav-section { padding: 10px 25px; color: var(--neon-purple); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; margin-top: 10px; }
+        .nav-item { display: flex; align-items: center; padding: 12px 25px; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 0.95rem; position: relative; z-index: 1; border-radius: 0; transition: color 0.2s; }
+        .nav-item:hover { color: white; }
+        .nav-item.active { color: white; font-weight: 600; }
+        .nav-item i { margin-right: 15px; width: 20px; text-align: center; font-size: 1rem; }
 
-        /* Main Content */
-        .main { flex: 1; overflow-y: auto; padding: 40px 50px; background: radial-gradient(circle at top right, #1e1b4b, var(--bg-dark)); }
+        /* ==========================================
+           CONTENIDO PRINCIPAL
+           ========================================== */
+        .main-content { flex: 1; overflow-y: auto; padding: 40px 60px; background: var(--bg-body); }
         
-        .header { margin-bottom: 30px; animation: fadeIn 0.5s ease; }
-        .header h1 { font-size: 2.8rem; color: var(--neon-cyan); text-shadow: 0 0 20px rgba(6, 182, 212, 0.4); margin-bottom: 10px; }
-        .header p { color: var(--text-muted); font-size: 1.1rem; line-height: 1.6; max-width: 800px; }
+        /* Cabecera del tema */
+        .topic-header { margin-bottom: 30px; animation: slideDown 0.5s ease; }
+        .topic-header h1 { font-size: 2.8rem; color: var(--text-dark); font-weight: 800; margin-bottom: 10px; line-height: 1.2; }
+        .topic-header h1 span { color: var(--accent-primary); }
+        .topic-header p { font-size: 1.1rem; color: var(--text-muted); max-width: 700px; line-height: 1.6; }
 
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; animation: slideUp 0.6s ease; }
+        /* Navegación por Pestañas (Tabs) dentro del tema */
+        .tabs-container { display: flex; gap: 5px; background: white; padding: 8px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 30px; animation: fadeIn 0.6s ease; }
+        .tab-btn { flex: 1; padding: 15px; background: transparent; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s; }
+        .tab-btn:hover { background: var(--bg-body); }
+        .tab-btn.active { background: var(--accent-primary); color: white; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3); }
+        .tab-btn i { font-size: 1.2rem; }
 
-        .card { background: var(--bg-card); border-radius: 15px; padding: 25px; border: 1px solid #334155; position: relative; overflow: hidden; transition: transform 0.3s, box-shadow 0.3s; }
-        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-color: var(--neon-purple); }
-        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple)); }
-        
-        .card-title { font-size: 1.2rem; color: var(--neon-cyan); margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-        .card-text { color: var(--text-muted); line-height: 1.7; font-size: 0.95rem; text-align: justify; }
-        .card-text strong { color: var(--neon-green); }
+        /* Contenido de las Pestañas */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: slideUp 0.4s ease forwards; }
 
-        /* Imagen */
-        .image-card { grid-column: span 2; background: #050811; border: 1px dashed var(--neon-purple); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; position: relative; }
-        .image-card img { max-width: 90%; max-height: 250px; object-fit: contain; filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.6)); transition: transform 0.5s; }
-        .image-card img:hover { transform: scale(1.05); }
-        .placeholder-img { color: var(--neon-purple); text-align: center; }
-        .placeholder-img i { font-size: 3rem; margin-bottom: 10px; display: block; }
+        /* Tarjetas de contenido internas */
+        .content-card { background: white; border-radius: 16px; padding: 35px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 1px solid var(--border-light); line-height: 1.8; font-size: 1.05rem; color: var(--text-dark); }
+        .content-card strong { color: var(--accent-primary); font-weight: 700; }
+        .content-card ul { margin-left: 20px; margin-top: 10px; }
+        .content-card li { margin-bottom: 10px; }
 
-        /* Desafío */
-        .challenge-card { grid-column: span 2; background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid var(--neon-orange); }
-        .challenge-card::before { background: var(--neon-orange); }
-        .challenge-card .card-title { color: var(--neon-orange); }
-        .btn-solve { background: transparent; border: 1px solid var(--neon-orange); color: var(--neon-orange); padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-top: 15px; font-weight: bold; transition: all 0.3s; }
-        .btn-solve:hover { background: var(--neon-orange); color: var(--bg-dark); }
+        /* Tarjeta de Desafío */
+        .challenge-card { background: linear-gradient(135deg, #fff, #fffbeb); border: 2px solid var(--accent-warning); }
+        .challenge-title { color: var(--accent-warning); font-weight: 800; font-size: 1.3rem; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        .btn-reveal { background: var(--accent-warning); color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 20px; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; }
+        .btn-reveal:hover { background: #b45309; transform: translateY(-2px); }
 
-        /* Modal */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 100; display: none; align-items: center; justify-content: center; }
-        .modal-content { background: var(--bg-panel); border: 1px solid var(--neon-green); border-radius: 15px; padding: 30px; max-width: 500px; width: 90%; text-align: center; animation: popIn 0.3s ease; }
-        .modal-content h3 { color: var(--neon-green); margin-bottom: 15px; font-size: 1.5rem; }
-        .modal-content p { color: var(--text-main); margin-bottom: 25px; line-height: 1.6; }
-        .btn-close { background: var(--neon-green); color: var(--bg-dark); border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1rem; }
+        /* Imagen / Diagrama Placeholder */
+        .diagram-box { background: #f8fafc; border: 2px dashed var(--border-light); border-radius: 16px; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 20px; color: var(--text-muted); }
+        .diagram-box i { font-size: 4rem; margin-bottom: 15px; color: var(--accent-secondary); opacity: 0.5; }
+
+        /* Modal de Respuesta */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 100; display: none; align-items: center; justify-content: center; }
+        .modal-content { background: white; border-top: 6px solid var(--accent-success); border-radius: 16px; padding: 40px; max-width: 550px; width: 90%; text-align: center; animation: popIn 0.3s ease; }
+        .modal-content h3 { color: var(--accent-success); font-size: 1.5rem; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .modal-content p { font-size: 1.1rem; line-height: 1.6; color: var(--text-dark); }
+        .btn-close-modal { background: var(--text-dark); color: white; border: none; padding: 12px 30px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 25px; transition: all 0.2s; }
+        .btn-close-modal:hover { background: black; }
 
         /* Animaciones */
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        @media (max-width: 768px) {
-            .sidebar { width: 70px; padding: 10px 0; }
-            .logo h1, .logo p, .nav-item span, .nav-section { display: none; }
-            .nav-item { justify-content: center; padding: 15px; border-left: none; border-bottom: 4px solid transparent; }
-            .nav-item.active { border-bottom-color: var(--neon-cyan); border-left: none; }
+        /* Responsive */
+        @media (max-width: 900px) {
+            .sidebar { width: 70px; }
+            .logo-area h1, .logo-area p, .nav-item span, .nav-section, .nav-indicator { display: none; }
+            .nav-item { justify-content: center; padding: 20px; }
+            .nav-item.active { background: var(--accent-primary); }
             .nav-item i { margin-right: 0; font-size: 1.3rem; }
-            .main { padding: 20px; }
-            .image-card, .challenge-card { grid-column: span 1; }
-            .header h1 { font-size: 2rem; }
+            .main-content { padding: 20px; }
+            .topic-header h1 { font-size: 2rem; }
+            .tabs-container { flex-direction: column; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Barra Lateral de Navegación -->
+    <!-- Barra Lateral -->
     <aside class="sidebar">
-        <div class="logo">
-            <h1><i class="fas fa-bolt"></i> Cyber-Lab</h1>
-            <p>Inmersión Electrónica</p>
+        <div class="logo-area">
+            <h1><i class="fas fa-microchip"></i> Electrónica</h1>
+            <p>Plataforma Interactiva</p>
         </div>
         
-        <div class="nav-section">Componentes</div>
-        <div class="nav-item active" onclick="loadTopic(0)"><i class="fas fa-atom"></i><span>Electrónica Básica</span></div>
-        <div class="nav-item" onclick="loadTopic(1)"><i class="fas fa-sliders-h"></i><span>Resistores</span></div>
-        <div class="nav-item" onclick="loadTopic(2)"><i class="fas fa-database"></i><span>Condensadores</span></div>
-        <div class="nav-item" onclick="loadTopic(3)"><i class="fas fa-exchange-alt"></i><span>Rectificadores</span></div>
-        <div class="nav-item" onclick="loadTopic(4)"><i class="fas fa-microchip"></i><span>Transistores</span></div>
-        <div class="nav-item" onclick="loadTopic(5)"><i class="fas fa-plug"></i><span>Tiristores / Triacs</span></div>
-        <div class="nav-item" onclick="loadTopic(6)"><i class="fas fa-brain"></i><span>Circuitos Integrados</span></div>
+        <nav class="nav-menu" id="navMenu">
+            <!-- Indicador Deslizante -->
+            <div class="nav-indicator" id="navIndicator"></div>
 
-        <div class="nav-section">Práctica</div>
-        <div class="nav-item" onclick="loadTopic(7)"><i class="fas fa-project-diagram"></i><span>Proyectos</span></div>
-        <div class="nav-item" onclick="loadTopic(8)"><i class="fas fa-shield-alt"></i><span>Seguridad</span></div>
-        <div class="nav-item" onclick="loadTopic(9)"><i class="fas fa-laptop-code"></i><span>Simulación</span></div>
+            <div class="nav-section">Fundamentos</div>
+            <div class="nav-item active" data-topic-index="0"><i class="fas fa-atom"></i><span>Magnitudes Básicas</span></div>
+            <div class="nav-item" data-topic-index="1"><i class="fas fa-sliders-h"></i><span>Resistores</span></div>
+            <div class="nav-item" data-topic-index="2"><i class="fas fa-battery-full"></i><span>Condensadores</span></div>
+            
+            <div class="nav-section">Semiconductores</div>
+            <div class="nav-item" data-topic-index="3"><i class="fas fa-exchange-alt"></i><span>Diodos y Rectificadores</span></div>
+            <div class="nav-item" data-topic-index="4"><i class="fas fa-broadcast-tower"></i><span>Transistores</span></div>
+            <div class="nav-item" data-topic-index="5"><i class="fas fa-plug"></i><span>Tiristores y Triacs</span></div>
+            
+            <div class="nav-section">Integración</div>
+            <div class="nav-item" data-topic-index="6"><i class="fas fa-brain"></i><span>Circuitos Integrados</span></div>
+            <div class="nav-item" data-topic-index="7"><i class="fas fa-tools"></i><span>Desarrollo de Proyectos</span></div>
+        </nav>
     </aside>
 
     <!-- Contenido Principal -->
-    <main class="main" id="main-content">
-        <!-- El contenido se inyecta aquí por JavaScript -->
+    <main class="main-content" id="mainContent">
+        <!-- Se inyecta dinámicamente -->
     </main>
 
-    <!-- Modal para Desafíos -->
-    <div class="modal-overlay" id="modal">
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay">
         <div class="modal-content">
-            <h3><i class="fas fa-lightbulb"></i> ¡Respuesta!</h3>
-            <p id="modal-answer"></p>
-            <button class="btn-close" onclick="closeModal()">Entendido</button>
+            <h3><i class="fas fa-check-circle"></i> Respuesta del Desafío</h3>
+            <p id="modalAnswer"></p>
+            <button class="btn-close-modal" id="btnCloseModal">Entendido</button>
         </div>
     </div>
 
     <script>
         // ==========================================
-        // 🧠 BASE DE CONOCIMIENTO (DATA DUMP)
+        // 🧠 BASE DE CONOCIMIENTO
         // ==========================================
         const temas = [
             {
-                titulo: "1. Electrónica Básica: El Río Invisible",
-                intro: "Para que cualquier aparato funcione, necesitamos tres personajes principales. Piensa en un circuito como un sistema de tuberías.",
-                definicion: "El <strong>Voltaje (V)</strong> es la presión que empuja el agua. La <strong>Corriente (I)</strong> es la cantidad de agua que fluye. La <strong>Resistencia (R)</strong> es un obstáculo en la tubería.",
-                funcionamiento: "La Ley de Ohm (<strong>V = I x R</strong>) rige este universo. Si subes el Voltaje (presión) y la Resistencia no cambia, la Corriente (flujo) sube. Si subes la Resistencia (obstáculo), la Corriente baja.",
-                ejemplo: "Tu cargador de celular: el enchufe tiene alto voltaje (120V/220V), pero el cargador usa resistencias y transformadores para bajarlo a 5V y limitar la corriente para que tu batería no explote.",
-                imagen_url: "", // Dejar vacío para mostrar placeholder
-                desafio: "Si tu cargador te da 5 Voltios y tu teléfono tiene una resistencia de 10 Ohmios, ¿Cuánta corriente (Amperios) fluye?",
-                respuesta: "Usamos la Ley de Ohm: I = V / R. Entonces: I = 5V / 10Ω = 0.5 Amperios. ¡Fluyen 500 miliamperios por tu cable!"
+                titulo: "Magnitudes <span>Básicas</span>",
+                intro: "Todo en la electrónica se basa en tres pilares. Si entiendes cómo se relacionan, entenderás cualquier circuito.",
+                tabs: {
+                    concepto: "Imagina un sistema de tuberías. El <strong>Voltaje (V)</strong> es la presión del agua, la fuerza que la empuja. La <strong>Corriente (I)</strong> es la cantidad de agua que fluye por la tubería. La <strong>Resistencia (R)</strong> es cualquier obstáculo que estrecha la tubería y frena el agua. Se miden en Voltios (V), Amperios (A) y Ohmios (Ω) respectivamente.",
+                    funcionamiento: "Estas tres magnitudes están atadas por la <strong>Ley de Ohm: V = I x R</strong>.<br><br><ul><li>Si subes el Voltaje (más presión) y la Resistencia no cambia, la Corriente sube.</li><li>Si subes la Resistencia (más obstáculo) y el Voltaje no cambia, la Corriente baja.</li></ul>Es una regla matemática, pero imagina siempre el agua.",
+                    aplicacion: "Tu cargador de celular es un experto en esto. El enchufe de la pared entrega 120V o 220V (alta presión). El 'ladrillo' del cargador reduce ese voltaje a 5V y limita la corriente para que la batería de tu teléfono se llene de energía de forma segura, sin explotar.",
+                    desafio: "Si tu cargador te da 5 Voltios y tu teléfono tiene una resistencia interna de 10 Ohmios, ¿Cuánta corriente (Amperios) está fluyendo por el cable?",
+                    respuesta: "Usamos la Ley de Ohm: I = V / R. Entonces: I = 5V / 10Ω = 0.5 Amperios. ¡Por eso los cargadores rápidos suben el voltaje o la corriente!"
+                }
             },
             {
-                titulo: "2. Resistores: Los Frenos del Circuito",
-                intro: "Los resistores son los héroes silenciosos. Sin ellos, la corriente iría sin control y quemaría todo.",
-                definicion: "Son componentes diseñados para frenar la corriente. Hay <strong>Fijos</strong> (siempre frenan igual), <strong>Variables</strong> (como el volumen de tu radio) y <strong>No Lineales</strong> (sensores que reaccionan al entorno).",
-                funcionamiento: "<strong>LDR:</strong> Le encanta la luz. En la oscuridad es un muro (alta resistencia), con luz abre la puerta (baja resistencia).<br><strong>NTC/PTC:</strong> Reaccionan al calor. NTC baja su resistencia si se calienta. PTC la sube drásticamente para proteger circuitos.",
-                ejemplo: "Las lámparas solares de tu jardín usan una LDR para saber cuándo oscurece y encenderse. Las baterías de laptops usan PTC para cortar la corriente si se sobrecalientan.",
-                imagen_url: "",
-                desafio: "¿Qué resistor usarías para hacer un termómetro digital que necesite mayor conductividad (menor resistencia) al aumentar el calor?",
-                respuesta: "Una NTC (Coeficiente Negativo de Temperatura). A más calor, su resistencia baja, permitiendo pasar más corriente que el microchip traduce en grados centígrados."
+                titulo: "Resistores: <span>Frenos y Sensores</span>",
+                intro: "Los resistores son los héroes silenciosos. Sin ellos, la corriente iría sin control y quemaría todo el circuito.",
+                tabs: {
+                    concepto: "Son componentes que se oponen al paso de la corriente. Existen los <strong>Fijos</strong> (siempre frenan igual, identificados por sus bandas de colores), los <strong>Variables/Potenciómetros</strong> (frenan según gires una perilla) y los <strong>No Lineales</strong> (sensores que reaccionan al entorno).",
+                    funcionamiento: "Los sensores más comunes son:<br><ul><li><strong>LDR:</strong> Le encanta la luz. En la oscuridad es un muro; si le das luz, abre la puerta.</li><li><strong>NTC:</strong> Si hace calor, baja su resistencia (deja pasar más corriente).</li><li><strong>PTC:</strong> Si hace calor, sube su resistencia drásticamente (corta el paso para proteger).</li></ul>",
+                    aplicacion: "Las lámparas solares de tu jardín usan una LDR para saber cuándo oscurecer y encenderse. Las baterías de los laptops usan PTC: si la batería se calienta demasiado, la PTC sube su resistencia y corta la corriente para evitar incendios.",
+                    desafio: "Estás diseñando un termómetro digital. Necesitas que al aumentar el calor, el circuito conduzca más electricidad. ¿Usas una NTC o una PTC?",
+                    respuesta: "Debes usar una NTC (Coeficiente Negativo de Temperatura). A más calor, su resistencia baja, permitiendo que más corriente pase, la cual el microprocesador traduce en grados centígrados."
+                }
             },
             {
-                titulo: "3. Condensadores: Los Tanques de Reserva",
-                intro: "Imagina un globo que llenas de agua poco a poco y puedes reventar de golpe para sacar toda el agua. Eso es un condensador.",
-                definicion: "Almacenan energía eléctrica y la liberan cuando se necesita. También sirven como filtros para limpiar señales 'sucias'.",
-                funcionamiento: "Tienen dos placas separadas por un aislante. Los <strong>Electrolíticos</strong> guardan mucha energía pero son lentos y tienen polaridad (+ y -). Los <strong>Cerámicos</strong> guardan poca pero son rapidísimos.",
-                ejemplo: "El flash de la cámara de tu celular: la batería no da tanta potencia de golpe, así que el condensador la guarda y ¡BAM! la suelta para el destello. También filtran la energía en los cargadores.",
-                imagen_url: "",
-                desafio: "¿Qué le pasa a un condensador electrolítico si lo conectas al revés (positivo donde va el negativo)?",
-                respuesta: "El aislante interior se destruye, se crea un cortocircuito interno, el condensador se calienta, se hincha y puede explotar lanzando su contenido. ¡Siempre revisa la polaridad!"
+                titulo: "Condensadores: <span>Tanques de Energía</span>",
+                intro: "Imagina un globo que llenas de aire poco a poco y puedes vaciar de golpe. Eso es un condensador eléctrico.",
+                tabs: {
+                    concepto: "Almacenan energía eléctrica temporalmente y la liberan cuando se necesita. También son excelentes 'filtros' para limpiar señales sucias. Se miden en Faradios (F).",
+                    funcionamiento: "Tienen dos placas metálicas separadas por un aislante. Los <strong>Electrolíticos</strong> guardan mucha energía pero son lentos y tienen polaridad (+ y -). Los <strong>Cerámicos</strong> guardan poca pero son rapidísimos. Cuando el circuito necesita un empujón extra, el condensador se vacía.",
+                    aplicacion: "El flash de la cámara de tu celular: la batería no da tanta potencia de golpe, así que el condensador la guarda poco a poco y ¡BAM! la suelta de un jalón para crear el destello. También filtran la energía en los cargadores volviendo la corriente ondulada en suave.",
+                    desafio: "¿Qué le pasa a un condensador electrolítico si lo conectas al revés (positivo donde va el negativo)?",
+                    respuesta: "El aislante interior se destruye, creando un cortocircuito interno. Se calienta, se hincha y puede explotar lanzando su contenido. ¡Siempre revisa la polaridad antes de conectar!"
+                }
             },
             {
-                titulo: "4. Rectificadores: Los Guardias de Tráfico",
-                intro: "La electricidad de la pared va y viene como las olas (Corriente Alterna). Tus aparatos necesitan que vaya en una sola dirección (Corriente Directa).",
-                definicion: "Los diodos son válvulas antirretorno. Dejan pasar la corriente en un sentido (Ánodo a Cátodo) y la bloquean en el contrario.",
-                funcionamiento: "Un diodo solo convierte la onda en media onda (corta la mitad). Un <strong>Puente Rectificador</strong> (4 diodos) es un grupo de guardias de tráfico que obligan a TODAS las olas a ir en la misma dirección.",
-                ejemplo: "Ese bloque pesado en el cable de tu laptop es un puente rectificador convirtiendo la CA de la pared en CD para tu computadora. Los LEDs también son diodos que brillan al dejar pasar la corriente.",
-                imagen_url: "",
-                desafio: "Si conectas una batería directamente al Cátodo (la línea del símbolo) de un diodo, ¿se encenderá un LED?",
-                respuesta: "No. El diodo actúa como un muro en esa dirección. La corriente debe entrar por el Ánodo (la flecha) y salir por el Cátodo para que el LED encienda."
+                titulo: "Rectificadores: <span>Guardias de Tráfico</span>",
+                intro: "La electricidad de la pared va y viene como las olas. Tus aparatos necesitan que vaya en una sola dirección.",
+                tabs: {
+                    concepto: "Los diodos son válvulas antirretorno. Dejan pasar la corriente en un sentido (Ánodo a Cátodo) y la bloquean en el contrario. Un grupo de 4 diodos forma un <strong>Puente Rectificador</strong>.",
+                    funcionamiento: "La red eléctrica entrega Corriente Alterna (CA), que va y viene. Un solo diodo corta la mitad de la onda. Un Puente Rectificador es más inteligente: toma las olas que van y las redirige, y las olas que vienen también las redirige al mismo lado. Convierte CA en Corriente Directa (CD).",
+                    aplicacion: "Ese bloque pesado en el cable de tu laptop contiene un puente rectificador. Transforma la CA de la pared en CD que tu computadora puede digerir. Los LEDs también son diodos que brillan cuando dejan pasar la corriente.",
+                    desafio: "Si conectas una batería directamente al Cátodo (la línea del símbolo) de un diodo, ¿se encenderá un LED conectado al circuito?",
+                    respuesta: "No. El diodo actúa como un muro en esa dirección. La corriente debe entrar por el Ánodo (el lado del triángulo) y salir por el Cátodo para que funcione."
+                }
             },
             {
-                titulo: "5. Transistores: Los Interruptores Mágicos",
-                intro: "El componente más importante del siglo XX. Sin él, no existirían las computadoras ni internet.",
-                definicion: "Es un interruptor que se controla con electricidad, no con tu mano. También es un amplificador (un megáfono para señales débiles).",
-                funcionamiento: "Tiene 3 patitas: Base, Colector y Emisor. Si le das un hilito de corriente a la Base, abre la compuerta para que pase un río de corriente del Colector al Emisor. Una corriente minúscula controla una gigante.",
-                ejemplo: "Procesadores: Miles de millones de transistores encendiendo (1) y apagándose (0) crean el código binario de tus videojuegos. Amplificadores: Toman la señal débil de un micrófono y la convierten en el sonido de un concierto.",
-                imagen_url: "",
-                desafio: "Si un sensor LDR produce una corriente muy pequeñita al detectar luz, y queremos que encienda una luz gigante de neón, ¿qué componente necesitamos?",
-                respuesta: "¡Un transistor! Actuará como amplificador. Tomará la señal débil del LDR en su Base, y dejará que la corriente grande del Colector encienda la luz de neón."
+                titulo: "Transistores: <span>Interruptores Mágicos</span>",
+                intro: "El componente más importante del siglo XX. Sin él, no existirían las computadoras, consolas ni internet.",
+                tabs: {
+                    concepto: "Es un interruptor que no se controla con la mano, sino con una pequeñísima cantidad de electricidad. También es un amplificador: toma una señal débil y la convierte en potente.",
+                    funcionamiento: "Tiene 3 patitas: Base, Colector y Emisor. Imagina una gran compuerta de presa. Si le das un hilito de corriente a la Base, la gran compuerta se abre y deja pasar un río de corriente del Colector al Emisor. Una corriente minúscula controla una gigante.",
+                    aplicacion: "<strong>Como interruptor:</strong> Miles de millones de transistores encendiendo (1) y apagándose (0) dentro del procesador de tu PS5 crean el código binario de tus juegos. <strong>Como amplificador:</strong> La señal débil de una guitarra eléctrica se hace ensordecedora en un concierto gracias a los transistores.",
+                    desafio: "Si un sensor LDR produce una corriente muy pequeñita al detectar luz, y queremos que encienda una luz gigante de neón, ¿qué componente necesitamos poner en medio?",
+                    respuesta: "¡Un transistor! Actuará como amplificador/interruptor. Tomará la señal débil del LDR en su Base, y dejará que la corriente grande del Colector encienda la luz de neón."
+                }
             },
             {
-                titulo: "6. Tiristores y Triacs: Los Interruptores Pegajosos",
+                titulo: "Tiristores y Triacs: <span>Interruptores Pegajosos</span>",
                 intro: "Son primos de los transistores, pero tercos: una vez que los enciendes, se quedan encendidos aunque quites la señal.",
-                definicion: "<strong>SCR:</strong> Deja pasar la corriente en una dirección y se queda pegado. <strong>Triac:</strong> Como dos SCR espalda con espalda, controla corriente que va y viene (CA).",
-                funcionamiento: "Tienen una patita llamada Compuerta. Un pulsito ahí los enciende para siempre. Solo se apagan si cortas la energía principal (como una alarma de incendio).",
-                ejemplo: "El 'dimmer' o regulador de la luz de tu sala usa un Triac. Gira la perilla y el Triac corta 'pedazos' de la onda eléctrica, haciendo que la bombilla reciba menos energía y brille menos.",
-                imagen_url: "",
-                desafio: "Diseña en tu mente una alarma de puerta con un SCR. ¿Cómo harías para apagar la alarma sin desconectar la batería principal?",
-                respuesta: "Necesitarías un botón de 'Reset' que, al presionarlo, corte momentáneamente la corriente que pasa por el SCR. Al cortarse la energía un instante, el SCR se 'despega' y se apaga."
+                tabs: {
+                    concepto: "<strong>SCR (Tiristor):</strong> Deja pasar la corriente en una dirección y se queda 'pegado'. <strong>Triac:</strong> Como dos SCR unidos, deja pasar la corriente en ambas direcciones (ideal para CA). Tienen una patita llamada Compuerta (Gate).",
+                    funcionamiento: "Si le das un pulsito de corriente a la Compuerta, el SCR o Triac se enciende. A diferencia del transistor, si quitas ese pulsito, el componente SIGUE encendido. Solo se apaga si cortas la energía principal por completo.",
+                    aplicacion: "El 'dimmer' o regulador de la luz de tu sala usa un Triac. Al girar la perilla, le dices al Triac que deje pasar solo 'pedacitos' de la onda eléctrica. Menos pedacitos = menos energía = luz más tenue.",
+                    desafio: "Diseña en tu mente una alarma de puerta con un SCR. Una vez que la alarma suena, no quieres que se apague al cerrar la puerta. ¿Cómo la apagas?",
+                    respuesta: "Necesitas un botón de 'Reset' que, al presionarlo, corte momentáneamente la energía principal del circuito. Al cortarse la energía, el SCR se 'despega' y se apaga la alarma."
+                }
             },
             {
-                titulo: "7. Circuitos Integrados: Ciudades Microscópicas",
-                intro: "Imagina meter cientos de resistores, diodos y transistores en una pastilla del tamaño de tu uña. Eso es un CI o Microchip.",
-                definicion: "Ciudades electrónicas completas miniaturizadas en silicio. No ves las calles internas, solo las autopistas que salen al exterior (los pines).",
-                funcionamiento: "El <strong>Temporizador 555</strong> es como un metrónomo: hace parpadear luces o cuenta tiempos exactos si le pones resistores y condensadores afuera. Las <strong>Compuertas Lógicas</strong> son jueces: AND (enciende si A Y B), OR (enciende si A O B).",
-                ejemplo: "El cerebro de tu smartphone o la placa de tu consola. Hasta el sensor de tu control que detecta cuando lo agitas es un pequeño CI.",
-                imagen_url: "",
-                desafio: "Estás haciendo una alarma de coche. Debe sonar si se abre la puerta O si se rompe el cristal. ¿Qué compuerta lógica necesitas?",
-                respuesta: "Una compuerta OR (O). Con ella, si el sensor de la puerta se activa O el sensor del cristal se activa, la salida será 1 (encendido) y la alarma sonará."
+                titulo: "Circuitos <span>Integrados</span>",
+                intro: "Imagina meter una ciudad entera de componentes dentro de una pastilla del tamaño de tu uña. Eso es un microchip.",
+                tabs: {
+                    concepto: "Circuitos Integrados (CI) son pastillas de silicio que contienen miles o millones de resistores, diodos y transistores miniaturizados. No ves las calles internas, solo las autopistas de entrada y salida (los pines).",
+                    funcionamiento: "Ejemplos clásicos:<br><ul><li><strong>Temporizador 555:</strong> Como un metrónomo. Conectándole resistencias y condensadores afuera, lo haces parpadear o contar tiempos exactos.</li><li><strong>Compuertas Lógicas (AND, OR):</strong> Toman decisiones. AND solo enciende si A Y B están activos. OR enciende si A O B están activos.</li></ul>",
+                    aplicacion: "El cerebro de tu smartphone (procesador) es un CI con miles de millones de transistores. El sensor de tu control de consola que detecta el movimiento es un CI pequeño dedicado a esa única tarea.",
+                    desafio: "Estás haciendo una alarma de coche. Debe sonar si se abre la puerta O si se rompe el cristal. ¿Qué compuerta lógica necesitas usar?",
+                    respuesta: "Una compuerta OR (O). Con ella, si el sensor de la puerta se activa O el sensor del cristal se activa, la salida enviará una señal de alarma."
+                }
             },
             {
-                titulo: "8. Elaboración de Proyectos: Del Caos al Prototipo",
-                intro: "Armar circuitos no es meter componentes al azar. Requiere un método ágil paso a paso.",
-                definicion: "Metodología para pasar de una idea a un circuito funcional sin volverte loco.",
-                funcionamiento: "<strong>1. Define</strong> el problema.<br><strong>2. Idea</strong> los componentes.<br><strong>3. Dibuja</strong> el esquemático.<br><strong>4. Simula</strong> primero (Tinkercad).<br><strong>5. Monta</strong> en Protoboard.<br><strong>6. Depura (Debug)</strong>: ¿No funciona? Revisa conexiones.",
-                ejemplo: "Quieres una luz automática: Defines que necesitas LDR+Transistor+LED. Lo dibujas, lo pruebas en Tinkercad. Si explota en la PC, corriges. Luego lo armas físico. Si no enciende, depuras: ¿El transistor está al revés?",
-                imagen_url: "",
-                desafio: "Armas un circuito en la protoboard, lo conectas a la batería y... no pasa nada. ¿Cuál es el primer checklist que debes hacer?",
-                respuesta: "1. ¿Está encendida la batería? 2. ¿Están los componentes en las filas correctas de la protoboard? 3. ¿El LED está al revés? 4. ¿Hay un cortocircuito? (Nunca asumas que el componente está quemado al principio)."
-            },
-            {
-                titulo: "9. Seguridad: Reglas para no volverse un Resistor",
-                intro: "La electricidad no se ve, pero muerde. Reglas de oro para adolescentes curiosos.",
-                definicion: "Protocolos para experimentar sin sufrir quemaduras ni destruir componentes.",
-                funcionamiento: "<strong>Regla 1:</strong> Nunca conectes directo a la pared (usar baterías 9V o menos).<br><strong>Regla 2:</strong> Cuidado con cortocircuitos (+ tocando -).<br><strong>Regla 3:</strong> Usa gafas (condensadores pueden explotar).<br><strong>Regla 4:</strong> Mano en el bolsillo si hay voltajes altos.<br><strong>Regla 5:</strong> ¿Huele a quemado? Corta la energía ya.",
-                ejemplo: "Pones un condensador electrolítico al revés en un circuito de 12V. Se calienta, explota y te lanza trozos de aluminio a los ojos. Con gafas te salvaste la vista. Sin gafas, tendrías que ir al hospital.",
-                imagen_url: "",
-                desafio: "¿Por qué la regla de "mano en el bolsillo" es vital cuando se trabaja con voltajes altos?",
-                respuesta: "Si tocas un cable vivo con una mano y estás apoyado en tierra, la corriente pasará de tu mano a tus pies. Si usas las dos manos y una toca vivo y la otra tierra, la corriente puede pasar por tu pecho y detener tu corazón."
-            },
-            {
-                titulo: "10. Simulación: Tu Superpoder Oculto",
-                intro: "Los ingenieros de Apple y NASA no sueldan a la primera. Se equivocan en la computadora. Tú también debes hacerlo.",
-                definicion: "Usar software (como Tinkercad Circuits) para armar circuitos virtuales antes de gastar dinero y tiempo en lo físico.",
-                funcionamiento: "Arrastras componentes, los conectas y le das a "Simular". Si hay un cortocircuito, el programa te avisa. Puedes ver la corriente fluyendo y los voltajes en tiempo real sin riesgo de quemaduras.",
-                ejemplo: "Quieres armar una alarma con el chip 555. Lo intentas físico y no suena. ¿El chip está mal? ¿El cable? En Tinkercad, las conexiones son perfectas. Si no suena, es que tu lógica matemática está mal, no los componentes.",
-                imagen_url: "",
-                desafio: "¿Cuál es la principal ventaja de simular un circuito antes de armarlo físico respecto a la resolución de problemas (Debugging)?",
-                respuesta: "Elimina las variables físicas (cables rotos, malos contactos, componentes defectuosos). Si el circuito no funciona en simulación, sabes al 100% que es un error de diseño o lógica, lo que te obliga a entender la teoría en lugar de simplemente mover cables al azar."
+                titulo: "Desarrollo de <span>Proyectos</span>",
+                intro: "Armar circuitos no es meter componentes al azar. Requiere un método lógico para no volverte loco.",
+                tabs: {
+                    concepto: "Metodología ágil para pasar de una idea a un prototipo funcional en una Protoboard (tu tablero de pruebas sin soldadura).",
+                    funcionamiento: "<strong>1. Define:</strong> ¿Qué problema resuelvo?<br><strong>2. Idear:</strong> ¿Qué componentes uso?<br><strong>3. Dibuja:</strong> Haz un esquemático (mapa).<br><strong>4. Simula:</strong> Prueba en Tinkercad.<br><strong>5. Monta:</strong> Pasa a la protoboard física.<br><strong>6. Depura (Debug):</strong> ¿No funciona? Revisa paso a paso.",
+                    aplicacion: "Quieres una luz que parpadee. Defines que necesitas un 555, un LED, resistores y condensadores. Lo dibujas, lo simulas en Tinkercad. Si explota en la PC, corriges. Luego lo armas en la protoboard real. Si no parpadea, revisas conexiones.",
+                    desafio: "Armas un circuito en la protoboard, conectas la batería y... no pasa nada. ¿Cuál es el primer checklist físico que debes revisar?",
+                    respuesta: "1. ¿Está encendida/crema la batería? 2. ¿Están los componentes en las filas correctas? 3. ¿El LED o condensador están al revés? 4. ¿Hay un cable haciendo un cortocircuito?"
+                }
             }
         ];
 
         // ==========================================
-        // 🎨 RENDERIZADO DINÁMICO
+        // 🎨 LÓGICA DE INTERFAZ DINÁMICA (DELEGACIÓN DE EVENTOS)
         // ==========================================
-        let currentTopic = 0;
+        let currentIndex = 0;
 
-        function loadTopic(index) {
-            currentTopic = index;
+        function navigateTo(index) {
+            currentIndex = index;
             const tema = temas[index];
-            const mainContent = document.getElementById('main-content');
+            const mainContent = document.getElementById('mainContent');
             
-            // Actualizar Sidebar activa
-            document.querySelectorAll('.nav-item').forEach((item, i) => {
-                item.classList.toggle('active', i === index);
-            });
+            // 1. Actualizar Indicador Deslizante del Sidebar
+            const navItems = document.querySelectorAll('.nav-item');
+            const indicator = document.getElementById('navIndicator');
+            
+            navItems.forEach(item => item.classList.remove('active'));
+            navItems[index].classList.add('active');
+            
+            // Calcular posición matemática del indicador
+            const activeItem = navItems[index];
+            const menuTop = document.getElementById('navMenu').getBoundingClientRect().top;
+            const itemTop = activeItem.getBoundingClientRect().top;
+            indicator.style.top = (itemTop - menuTop + (activeItem.offsetHeight - 45) / 2) + 'px';
 
-            // Construir el HTML
+            // 2. Renderizar Contenido Principal (Sin eventos onclick en el HTML)
             mainContent.innerHTML = `
-                <div class="header">
+                <div class="topic-header">
                     <h1>${tema.titulo}</h1>
                     <p>${tema.intro}</p>
                 </div>
 
-                <div class="grid-container">
-                    <!-- Imagen (Placeholder para GitHub) -->
-                    <div class="card image-card">
-                        ${tema.imagen_url 
-                            ? `<img src="${tema.imagen_url}" alt="${tema.titulo}">` 
-                            : `<div class="placeholder-img">
-                                <i class="fas fa-image"></i>
-                                <p>Espacio reservado para la imagen de GitHub</p>
-                               </div>`
-                        }
-                    </div>
+                <div class="tabs-container">
+                    <button class="tab-btn active" data-tab="concepto"><i class="fas fa-lightbulb"></i> Concepto</button>
+                    <button class="tab-btn" data-tab="funcionamiento"><i class="fas fa-cogs"></i> Funcionamiento</button>
+                    <button class="tab-btn" data-tab="aplicacion"><i class="fas fa-globe-americas"></i> Aplicación Real</button>
+                    <button class="tab-btn" data-tab="desafio"><i class="fas fa-brain"></i> Desafío</button>
+                </div>
 
-                    <!-- ¿Qué es? -->
-                    <div class="card">
-                        <div class="card-title"><i class="fas fa-question-circle"></i> ¿Qué es?</div>
-                        <div class="card-text">${tema.definicion}</div>
+                <div class="tab-content active" id="tab-concepto">
+                    <div class="content-card">${tema.tabs.concepto}</div>
+                </div>
+                
+                <div class="tab-content" id="tab-funcionamiento">
+                    <div class="content-card">
+                        <div class="diagram-box">
+                            <i class="fas fa-project-diagram"></i>
+                            <p>Espacio reservado para diagrama esquemático</p>
+                        </div>
+                        ${tema.tabs.funcionamiento}
                     </div>
+                </div>
 
-                    <!-- ¿Cómo funciona? -->
-                    <div class="card">
-                        <div class="card-title"><i class="fas fa-cogs"></i> ¿Cómo funciona?</div>
-                        <div class="card-text">${tema.funcionamiento}</div>
-                    </div>
+                <div class="tab-content" id="tab-aplicacion">
+                    <div class="content-card">${tema.tabs.aplicacion}</div>
+                </div>
 
-                    <!-- Ejemplo Real -->
-                    <div class="card">
-                        <div class="card-title"><i class="fas fa-globe-americas"></i> Ejemplo en el Mundo Real</div>
-                        <div class="card-text">${tema.ejemplo}</div>
-                    </div>
-
-                    <!-- Desafío -->
-                    <div class="card challenge-card">
-                        <div class="card-title"><i class="fas fa-brain"></i> Desafío Mental</div>
-                        <div class="card-text">${tema.desafio}</div>
-                        <button class="btn-solve" onclick="showAnswer(${index})">
-                            <i class="fas fa-key"></i> Ver Respuesta
-                        </button>
+                <div class="tab-content" id="tab-desafio">
+                    <div class="content-card challenge-card">
+                        <div class="challenge-title"><i class="fas fa-bolt"></i> Pon a prueba tu mente</div>
+                        ${tema.tabs.desafio}
+                        <button class="btn-reveal" data-answer-index="${index}"><i class="fas fa-eye"></i> Ver Respuesta</button>
                     </div>
                 </div>
             `;
         }
 
-        function showAnswer(index) {
-            const modal = document.getElementById('modal');
-            const answerText = document.getElementById('modal-answer');
-            answerText.innerHTML = temas[index].respuesta;
-            modal.style.display = 'flex';
-        }
+        // 3. Escuchador de Eventos Global (Event Delegation)
+        // Esto soluciona el problema de los botones que no funcionaban
+        document.addEventListener('DOMContentLoaded', () => {
+            const mainContent = document.getElementById('mainContent');
+            const navMenu = document.getElementById('navMenu');
+            const modalOverlay = document.getElementById('modalOverlay');
+            const btnCloseModal = document.getElementById('btnCloseModal');
 
-        function closeModal() {
-            document.getElementById('modal').style.display = 'none';
-        }
+            // Manejar clics en el menú lateral
+            navMenu.addEventListener('click', (e) => {
+                const navItem = e.target.closest('.nav-item');
+                if (navItem) {
+                    const index = parseInt(navItem.getAttribute('data-topic-index'));
+                    navigateTo(index);
+                }
+            });
 
-        // Cerrar modal si se hace clic fuera
-        window.onclick = function(event) {
-            const modal = document.getElementById('modal');
-            if (event.target == modal) {
-                closeModal();
-            }
-        }
+            // Manejar clics dentro del contenido principal (Pestañas y Botón de respuesta)
+            mainContent.addEventListener('click', (e) => {
+                // Si se hizo clic en una pestaña
+                const tabBtn = e.target.closest('.tab-btn');
+                if (tabBtn) {
+                    const tabName = tabBtn.getAttribute('data-tab');
+                    
+                    // Desactivar todas las pestañas y contenidos
+                    mainContent.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                    mainContent.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                    
+                    // Activar la pestaña clicada
+                    tabBtn.classList.add('active');
+                    const targetContent = document.getElementById(`tab-${tabName}`);
+                    if (targetContent) {
+                        targetContent.classList.add('active');
+                        // Truco para reiniciar la animación
+                        targetContent.style.animation = 'none';
+                        targetContent.offsetHeight; 
+                        targetContent.style.animation = null; 
+                    }
+                }
 
-        // Inicializar la aplicación con el primer tema
-        loadTopic(0);
+                // Si se hizo clic en el botón de ver respuesta
+                const revealBtn = e.target.closest('.btn-reveal');
+                if (revealBtn) {
+                    const answerIndex = revealBtn.getAttribute('data-answer-index');
+                    document.getElementById('modalAnswer').innerText = temas[answerIndex].tabs.respuesta;
+                    modalOverlay.style.display = 'flex';
+                }
+            });
+
+            // Cerrar Modal
+            btnCloseModal.addEventListener('click', () => {
+                modalOverlay.style.display = 'none';
+            });
+            
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    modalOverlay.style.display = 'none';
+                }
+            });
+
+            // Inicializar en el primer tema
+            navigateTo(0);
+        });
     </script>
 </body>
 </html>
